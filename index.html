@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Enforcer">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<title>Enforcer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="ambient"></div>
+
+<!-- ============ TODAY ============ -->
+<main id="view-today" class="view active">
+  <div class="top">
+    <div class="wordmark"><span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></span>ENFORCER</div>
+    <div class="date-chip" id="today-date"></div>
+  </div>
+  <div class="greet"><div class="hi" id="greet-hi"></div><div class="sub" id="greet-sub"></div></div>
+
+  <div class="card" id="notif-banner" style="display:none"></div>
+
+  <div class="card violet-edge hero" id="hero-card">
+    <div class="flame-wrap">
+      <div class="flame-ring" id="flame-ring"></div>
+      <svg class="flame-svg" id="flame-svg" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <defs>
+          <linearGradient id="flameGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#fde68a"/><stop offset="55%" stop-color="#f59e0b"/><stop offset="100%" stop-color="#b45309"/>
+          </linearGradient>
+        </defs>
+        <path fill="url(#flameGrad)" stroke="none" d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+      </svg>
+    </div>
+    <div class="streak-big" id="streak-big">0</div>
+    <div class="streak-label">Perfect days</div>
+    <div class="stage-chip" id="stage-chip"></div>
+    <div class="stake-line" id="stake-line"></div>
+  </div>
+
+  <div class="motto" id="motto"></div>
+
+  <div class="tiles" style="grid-template-columns:1fr 1fr 1fr 1fr">
+    <div class="tile"><div class="num violet" id="tile-lifetime">0</div><div class="lbl">Lifetime</div></div>
+    <div class="tile"><div class="num" id="tile-record">0</div><div class="lbl">Record</div></div>
+    <div class="tile"><div class="num gold" id="tile-badges">0</div><div class="lbl">Badges</div></div>
+    <div class="tile"><div class="num gold" id="tile-power">0</div><div class="lbl">Power</div></div>
+  </div>
+
+  <div class="card" id="wake-card"></div>
+
+  <div class="card">
+    <h3><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Today's rules</h3>
+    <div id="rules-today"></div>
+    <button class="btn" id="checkin-btn" style="margin-top:14px"></button>
+  </div>
+
+  <div class="card" id="goals-card" style="display:none">
+    <h3><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>Goals this week</h3>
+    <div id="goals-today"></div>
+  </div>
+
+  <div class="card" id="habits-card" style="display:none">
+    <h3><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Bonus habits</h3>
+    <div class="habit-chips" id="habit-chips"></div>
+    <div id="power-line"></div>
+  </div>
+</main>
+
+<!-- ============ STREAKS ============ -->
+<main id="view-streaks" class="view">
+  <div class="top"><div class="wordmark"><span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></span>STREAKS</div></div>
+
+  <div class="card violet-edge">
+    <h3><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>Last 30 days</h3>
+    <div class="chart-box" id="chart-box"></div>
+    <div class="chart-legend">
+      <span><i style="background:linear-gradient(150deg,#8b5cf6,#5b21b6)"></i>Clean</span>
+      <span><i style="background:rgba(240,80,110,0.55)"></i>Broken</span>
+      <span><i style="background:rgba(148,143,168,0.35)"></i>Holiday</span>
+    </div>
+    <div style="height:12px"></div>
+    <div class="daygrid" id="daygrid"></div>
+    <div class="chart-legend" style="padding-top:10px"><span><i style="background:linear-gradient(150deg,#fbbf24,#b45309)"></i>Power Day — clean + all bonus habits</span></div>
+  </div>
+
+  <div class="card"><h3><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>Per-rule streaks</h3><div id="per-rule"></div></div>
+
+  <div class="card">
+    <h3><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>Badge wall</h3>
+    <div class="badge-wall" id="badge-wall"></div>
+  </div>
+
+  <div class="card">
+    <h3><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"/></svg>Crowns</h3>
+    <div class="crown-row" id="crown-row"></div>
+  </div>
+</main>
+
+<!-- ============ LOGS ============ -->
+<main id="view-logs" class="view">
+  <div class="top"><div class="wordmark"><span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></span>LOGS</div></div>
+
+  <div class="card">
+    <h3><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Mistake log</h3>
+    <div id="mistake-list"></div>
+  </div>
+
+  <div class="card">
+    <h3><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>Playbook — what works</h3>
+    <div id="playbook-list"></div>
+    <div class="field" style="margin-top:12px"><textarea id="playbook-in" placeholder="What's working? Write it down before you forget it." style="min-height:70px"></textarea></div>
+    <button class="btn ghost small" id="playbook-add">Add to playbook</button>
+  </div>
+</main>
+
+<!-- ============ SETTINGS ============ -->
+<main id="view-settings" class="view">
+  <div class="top"><div class="wordmark"><span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></span>SETTINGS</div></div>
+
+  <div class="card"><h3><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Hard rules</h3>
+    <div id="set-rules"></div>
+    <div class="hint warn" style="margin-top:10px">Ground rules are permanent. Wake-up time can only move earlier. Added rules can be removed after a 24 h cooling-off. Adding a rule never cuts existing streaks.</div>
+    <div style="height:12px"></div>
+    <div class="field"><input id="new-rule-name" placeholder="New rule, e.g. No energy drinks" maxlength="40"></div>
+    <button class="btn ghost small" id="add-rule-btn">Add rule</button>
+  </div>
+
+  <div class="card"><h3><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Bonus habits</h3>
+    <div id="set-habits"></div>
+    <div style="height:8px"></div>
+    <div class="field"><input id="new-habit-name" placeholder="New habit, e.g. Read 20 min" maxlength="30"></div>
+    <button class="btn ghost small" id="add-habit-btn">Add habit</button>
+    <div class="hint">Extras, not rules — skipping never cuts a streak. A clean day with every habit done becomes a <b style="color:var(--ember-hi)">Power Day</b> ⚡ (gold in history, own counter). Removable anytime.</div>
+  </div>
+
+  <div class="card"><h3><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>Goals</h3>
+    <div id="set-goals"></div>
+    <div style="height:8px"></div>
+    <button class="btn ghost small" id="add-goal-btn">Add goal</button>
+    <div class="hint">Max 3 active. A goal that runs out of slack becomes that day's hard rule.</div>
+  </div>
+
+  <div class="card"><h3><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Holiday break</h3>
+    <div id="holiday-status"></div>
+    <div class="row" style="gap:10px; margin-top:6px">
+      <div class="field" style="flex:1; margin-bottom:0"><label>Starts</label><input type="date" id="hol-start"></div>
+      <div class="field" style="width:110px; margin-bottom:0"><label>Days</label><input type="number" id="hol-days" min="1" max="30" placeholder="5"></div>
+    </div>
+    <div style="height:12px"></div>
+    <button class="btn ghost small" id="hol-btn">Schedule holiday</button>
+    <div class="hint">Declared in advance, fixed length. Streaks pause — no growth, no cuts. Can end early, can never be extended or backdated.</div>
+  </div>
+
+  <div class="card"><h3><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Reminders</h3>
+    <div id="set-reminders"></div>
+    <div style="height:8px"></div>
+    <div class="field"><label>New reminder text</label><input id="new-rem-text" placeholder="e.g. Evening check-in" maxlength="80"></div>
+    <div class="row" style="gap:10px; align-items:flex-end">
+      <div class="field" style="flex:1; margin-bottom:0"><label>Time</label><input type="time" id="new-rem-time" value="20:00"></div>
+      <div class="field" style="flex:1; margin-bottom:0"><label>Repeat</label>
+        <div class="seg" id="new-rem-repeat-seg">
+          <button data-r="daily" class="on">Daily</button>
+          <button data-r="once">One-time</button>
+        </div>
+      </div>
+    </div>
+    <div class="field" id="new-rem-date-f" style="display:none"><label>Date</label><input type="date" id="new-rem-date"></div>
+    <button class="btn ghost small" id="add-rem-btn">Add reminder</button>
+    <div class="hint">Reminders fire as in-app notifications (via service worker) whenever the app is open. For always-on push while the screen is locked, enable ntfy or Cloudflare push below.</div>
+    <div style="height:10px"></div>
+    <button class="btn ghost small" id="notif-perm-btn">Enable notifications</button>
+  </div>
+
+  <div class="card" id="ntfy-card"><h3><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Always-on push (ntfy)</h3>
+    <div class="row"><span class="rule-name" style="font-size:14px">Always-on push</span>
+      <label class="row" style="justify-content:flex-start; gap:8px; cursor:pointer">
+        <input type="checkbox" id="ntfy-toggle">
+      </label>
+    </div>
+    <div id="ntfy-details"></div>
+  </div>
+
+  <div class="card" id="cf-push-card"><h3><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Always-on push (Cloudflare)</h3>
+    <div class="row"><span class="rule-name" style="font-size:14px">Always-on push</span>
+      <label class="row" style="justify-content:flex-start; gap:8px; cursor:pointer">
+        <input type="checkbox" id="cf-push-toggle">
+      </label>
+    </div>
+    <div id="cf-push-details"></div>
+    <div class="hint" style="margin-top:10px">Delivers notifications branded as Enforcer, even when the app is fully closed. Open the app once after changing reminders to sync.</div>
+  </div>
+
+  <div class="card"><h3><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>Your words</h3>
+    <div class="hint" style="margin-bottom:10px">One line per phrase. <b>{n}</b> = current streak, <b>{lost}</b> = days lost, <b>{record}</b> = your record. The app picks one at random.</div>
+    <div id="phrase-editors"></div>
+  </div>
+
+  <div class="card">
+    <button class="btn ghost small" id="export-btn">Export data (JSON)</button>
+    <div class="hint" style="margin-top:8px">Everything is stored on this device. Export before clearing browser data.</div>
+  </div>
+</main>
+
+<!-- bottom nav -->
+<nav>
+  <button data-view="today" class="on"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 3l9 6.5V21a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M9 22V12h6v10"/></svg>TODAY</button>
+  <button data-view="streaks"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>STREAKS</button>
+  <button data-view="logs"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>LOGS</button>
+  <button data-view="settings"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>SETTINGS</button>
+</nav>
+
+<!-- check-in sheet -->
+<div class="sheet-veil" id="checkin-veil">
+  <div class="sheet">
+    <div class="sheet-grip"></div>
+    <h2>Evening check-in</h2>
+    <div class="sheet-sub">Answer honestly. Silence counts as a fail at midnight — an unchecked box never passes.</div>
+    <div id="checkin-items"></div>
+    <button class="btn" id="checkin-submit" style="margin-top:18px">Confirm check-in</button>
+    <button class="btn ghost" id="checkin-cancel" style="margin-top:10px">Not yet</button>
+  </div>
+</div>
+
+<!-- goal editor sheet -->
+<div class="sheet-veil" id="goal-veil">
+  <div class="sheet">
+    <div class="sheet-grip"></div>
+    <h2 id="goal-sheet-title">New goal</h2>
+    <div class="sheet-sub">Goals stay silent while you're on pace. Run out of slack and they become the day's hard rule.</div>
+    <div class="field"><label>Name</label><input id="goal-name" placeholder="e.g. Gym" maxlength="30"></div>
+    <div class="field"><label>Type</label>
+      <div class="seg" id="goal-type-seg">
+        <button data-t="freq" class="on">× per week</button>
+        <button data-t="cume">Amount / week</button>
+        <button data-t="mile">By a date</button>
+      </div>
+    </div>
+    <div class="field" id="goal-target-f"><label id="goal-target-lbl">Times per week</label><input type="number" id="goal-target" min="1" placeholder="3"></div>
+    <div class="field" id="goal-unit-f" style="display:none"><label>Unit</label><input id="goal-unit" placeholder="km" maxlength="10"></div>
+    <div class="field" id="goal-date-f" style="display:none"><label>Deadline</label><input type="date" id="goal-date"></div>
+    <label class="row" style="justify-content:flex-start; gap:10px; margin-bottom:14px; cursor:pointer">
+      <input type="checkbox" id="goal-enforce" checked>
+      <span style="font-size:13.5px; font-weight:600">Enforce (escalates to hard rule at pace limit)</span>
+    </label>
+    <button class="btn" id="goal-save">Save goal</button>
+    <button class="btn ghost" id="goal-cancel" style="margin-top:10px">Cancel</button>
+  </div>
+</div>
+
+<!-- celebration -->
+<div class="fx-veil celebrate" id="celebrate-veil">
+  <canvas id="confetti"></canvas>
+  <div class="fx-card">
+    <div class="fx-kicker" id="cel-kicker">Milestone</div>
+    <div class="fx-num" id="cel-num">7</div>
+    <div class="fx-title" id="cel-title"></div>
+    <div class="fx-line" id="cel-line"></div>
+    <button class="btn" id="cel-ok">Keep it burning</button>
+  </div>
+</div>
+
+<!-- shame -->
+<div class="fx-veil shame" id="shame-veil">
+  <div class="fx-card">
+    <div class="fx-kicker">Streak broken</div>
+    <div class="fx-num" id="shame-num">0</div>
+    <div class="fx-title" id="shame-title"></div>
+    <div class="fx-line" id="shame-line"></div>
+    <input class="log-note-in" id="shame-note" placeholder="What happened? One honest line." maxlength="120">
+    <button class="btn danger" id="shame-ok">Day 1 starts now</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
