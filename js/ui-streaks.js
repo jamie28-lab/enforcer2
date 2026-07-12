@@ -1,7 +1,7 @@
 // ENFORCER 2.0 — STREAKS view: 30-day chart, day grid, per-rule streaks, badge wall, crowns
 'use strict';
 import { S, todayKey, addDays, parseKey, fmtDate, MILESTONES } from './state.js';
-import { activeRules, dayClean, streakEndingAt, perRuleStreak, isPowerDay, crowns, ruleName, mirrorHerCount30, identityValid } from './engine.js';
+import { activeRules, dayClean, streakEndingAt, perRuleStreak, isPowerDay, crowns, ruleName, mirrorHerCount30, identityValid, voteTrajectory, lifetimeClean } from './engine.js';
 import { $, esc, ICONS, ruleIcon } from './ui-shared.js';
 
 export function renderStreaks() {
@@ -73,4 +73,36 @@ export function renderStreaks() {
   // mirror stat
   const ms = $('#mirror-stat');
   ms.innerHTML = identityValid() ? `${ICONS.mirror} Mirror — <b>${mirrorHerCount30()}/30</b> mornings chosen` : '';
+
+  // 1.01^n compounding reframe
+  const cs = $('#compound-stat');
+  if (!identityValid()) cs.innerHTML = '';
+  else {
+    const lc = lifetimeClean();
+    const factor = lc >= 365 ? '37.8+' : (1.01 ** lc).toFixed(1);
+    cs.innerHTML = `1% better daily: ×${factor} vs standing still`;
+  }
+
+  // trajectory chart: cumulative HER votes, last 60 days, vs linear expectation
+  const tj = $('#trajectory-card');
+  if (!identityValid()) { tj.style.display = 'none'; }
+  else {
+    const traj = voteTrajectory(60);
+    const total = traj[traj.length - 1];
+    if (total < 5) { tj.style.display = 'none'; }
+    else {
+      tj.style.display = '';
+      const TW = 308, TH = 120, tmax = Math.max(...traj, 1);
+      const tx = i => 4 + i * (TW - 8) / (traj.length - 1), ty = v => TH - 12 - v * (TH - 30) / tmax;
+      let tpath = '';
+      traj.forEach((v, i) => { tpath += (i ? ' L ' : 'M ') + tx(i).toFixed(1) + ' ' + ty(v).toFixed(1); });
+      $('#trajectory-chart').innerHTML = `
+        <svg viewBox="0 0 ${TW} ${TH}" style="width:100%; height:auto; display:block" role="img" aria-label="Cumulative votes for ${esc(S.identity.her.name)} over the last 60 days, currently ${total}">
+          <line x1="${tx(0)}" y1="${ty(0)}" x2="${tx(traj.length - 1)}" y2="${ty(total)}" stroke="rgba(255,255,255,0.25)" stroke-width="1.5" stroke-dasharray="4 4"/>
+          <path d="${tpath}" fill="none" stroke="#a78bfa" stroke-width="2.2" stroke-linecap="round"/>
+          <circle cx="${tx(traj.length - 1)}" cy="${ty(total)}" r="4" fill="#c4b5fd"/>
+          <text x="${tx(traj.length - 1) - 6}" y="${ty(total) - 9}" fill="#c4b5fd" font-size="11" font-weight="700" text-anchor="end" font-family="Inter">${total}</text>
+        </svg>`;
+    }
+  }
 }

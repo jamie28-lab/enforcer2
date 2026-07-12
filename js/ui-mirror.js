@@ -1,7 +1,7 @@
 // ENFORCER 2.0 — Morning Mirror overlay + Identity setup sheet
 'use strict';
 import { S, save, todayKey, hm, now } from './state.js';
-import { activeRules, wakeRule, isHoliday, day, ruleName, activeHabits, goalStatus, identityValid } from './engine.js';
+import { activeRules, wakeRule, isHoliday, day, ruleName, activeHabits, goalStatus, identityValid, votesOnDay } from './engine.js';
 import { $, esc, bus, ICONS, toast } from './ui-shared.js';
 import { logWakeUp } from './ui-today.js';
 
@@ -81,10 +81,12 @@ function paintMirror() {
     $('#mirror-confront-no').onclick = e => { e.stopPropagation(); logMirrorAnswer('her-after-confrontation'); mirrorStage = 'affirmation'; paintMirror(); bus.refresh(false); };
     $('#mirror-confront-yes').onclick = () => { logMirrorAnswer('other'); closeMirror(); bus.refresh(false); };
   } else {
+    const n = votesOnDay(t).her;
     box.innerHTML = `
       <div class="mirror-affirm-wrap">
         <div class="mirror-portrait">${esc(id.her.portrait)}</div>
         <div class="mirror-affirm-line">Then act like it. See you tonight.</div>
+        ${n > 0 ? `<div class="mirror-votes-line">+${n} votes available today</div>` : ''}
       </div>`;
     box.onclick = closeMirror;
     setTimeout(() => { if (mirrorStage === 'affirmation') closeMirror(); }, 2000);
@@ -135,6 +137,15 @@ function saveIdentity() {
   const otherPortrait = $('#id-other-portrait').value.trim();
   if (!herPortrait || !otherPortrait) { toast('Write both portraits.'); return; }
   if (!draftTraits.length) { toast('Add at least one trait.'); return; }
+  // trait deletion: clear any rule/goal/habit refs to traits removed from the roster (no orphans)
+  const oldIds = S.identity ? S.identity.her.traits.map(tr => tr.id) : [];
+  const newIds = new Set(draftTraits.map(tr => tr.id));
+  const removedIds = oldIds.filter(id => !newIds.has(id));
+  if (removedIds.length) {
+    for (const r of S.rules) if (removedIds.includes(r.traitId)) r.traitId = null;
+    for (const g of S.goals) if (removedIds.includes(g.traitId)) g.traitId = null;
+    for (const h of S.habits) if (removedIds.includes(h.traitId)) h.traitId = null;
+  }
   S.identity = {
     her: { name: herName, portrait: herPortrait, traits: draftTraits.map(tr => ({ ...tr })) },
     other: { name: otherName, portrait: otherPortrait },

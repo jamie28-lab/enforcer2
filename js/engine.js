@@ -165,6 +165,100 @@ export function mirrorHerCount30() {
   return n;
 }
 
+/* ---------- vote economy (P2) — every vote is DERIVED from S.days/S.mirror/S.mistakes, never stored ---------- */
+/* memoize mistakes-by-date across a render pass; rebuilt whenever the array length changes (mistakes only ever grow via unshift) */
+let _mistakesIdx = { len: -1, map: null };
+function mistakesCountByDate(k) {
+  if (_mistakesIdx.len !== S.mistakes.length) {
+    const map = new Map();
+    for (const m of S.mistakes) map.set(m.date, (map.get(m.date) || 0) + 1);
+    _mistakesIdx = { len: S.mistakes.length, map };
+  }
+  return _mistakesIdx.map.get(k) || 0;
+}
+
+export function votesOnDay(k) {
+  if (!identityValid() || !S.identity.createdAt || k < S.identity.createdAt) return { her: 0, other: 0 };
+  if (isHoliday(k)) return { her: 0, other: 0 };
+  const t = todayKey();
+  const d = day(k);
+  const final = k < t;
+  let her = 0, other = 0;
+
+  // HER: +1 per bonus habit done that day
+  for (const h of activeHabits(k)) if ((d.habitsDone || {})[h.id]) her++;
+  // HER: +1 if the day is clean (same pass/fail/open semantics as everywhere else in engine.js)
+  if (dayClean(k, final) === 'pass') her++;
+  // HER: +1 if the morning mirror was answered for her
+  const m = S.mirror[k];
+  if (m && (m.answer === 'her' || m.answer === 'her-after-confrontation')) her++;
+  // HER: +1 per enforced goal actually attested done that day (real d.goalDone record only)
+  for (const g of S.goals) if (g.enforce && (d.goalDone || {})[g.id] > 0) her++;
+
+  // OTHER: +1 per rule (or escalated goal) broken that day — one S.mistakes entry each
+  other += mistakesCountByDate(k);
+  // OTHER: +1 if a finalized past day's mirror is absent or answered 'other' — never today
+  if (d.finalized && final) {
+    if (!m || m.answer === 'other') other++;
+  }
+
+  return { her, other };
+}
+
+export function voteBalance(nDays = 30) {
+  const t = todayKey();
+  let her = 0, other = 0;
+  for (let i = 0; i < nDays; i++) {
+    const v = votesOnDay(addDays(t, -i));
+    her += v.her; other += v.other;
+  }
+  const total = her + other;
+  const pct = total > 0 ? Math.round(100 * her / total) : 0;
+  return { her, other, pct };
+}
+
+/* per-trait HER vote attribution over the trailing 30 days — a satellite lens, not a partition of voteBalance's total */
+export function traitVotes30() {
+  const counts = {};
+  if (!identityValid()) return counts;
+  const t = todayKey();
+  for (let i = 0; i < 30; i++) {
+    const k = addDays(t, -i);
+    if (k < S.identity.createdAt || isHoliday(k)) continue;
+    const d = day(k);
+    const final = k < t;
+    for (const h of activeHabits(k)) {
+      if (h.traitId && (d.habitsDone || {})[h.id]) counts[h.traitId] = (counts[h.traitId] || 0) + 1;
+    }
+    for (const g of S.goals) {
+      if (g.traitId && g.enforce && (d.goalDone || {})[g.id] > 0) counts[g.traitId] = (counts[g.traitId] || 0) + 1;
+    }
+    for (const r of activeRules(k)) {
+      if (r.traitId && ruleOutcome(r, k, final) === true) counts[r.traitId] = (counts[r.traitId] || 0) + 1;
+    }
+  }
+  return counts;
+}
+
+/* cumulative HER votes for each of the trailing nDays (oldest -> today) */
+export function voteTrajectory(nDays = 60) {
+  const t = todayKey();
+  const out = [];
+  let cum = 0;
+  for (let i = nDays - 1; i >= 0; i--) {
+    cum += votesOnDay(addDays(t, -i)).her;
+    out.push(cum);
+  }
+  return out;
+}
+
+/* lifetime count of days a given bonus habit was marked done — the "votes" for its compounding card */
+export function lifetimeHabitDone(h) {
+  let n = 0, cur = h.addedOn; const t = todayKey();
+  while (cur <= t) { if ((day(cur).habitsDone || {})[h.id]) n++; cur = addDays(cur, 1); }
+  return n;
+}
+
 /* ---------- goals ---------- */
 export const weekStart = k => { const d = parseKey(k); const off = (d.getDay() + 6) % 7; d.setDate(d.getDate() - off); return dkey(d); };
 export function goalWeekProgress(g) {

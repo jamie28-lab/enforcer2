@@ -62,6 +62,12 @@
     <div class="tile"><div class="num gold" id="tile-power">0</div><div class="lbl">Power</div></div>
   </div>
 
+  <div class="card violet-edge" id="balance-card" style="display:none">
+    <div class="balance-track"><div class="balance-fill" id="balance-fill"></div></div>
+    <div class="balance-label" id="balance-label"></div>
+    <div class="balance-sentence" id="balance-sentence"></div>
+  </div>
+
   <div class="card" id="wake-card"></div>
 
   <div class="card">
@@ -98,6 +104,13 @@
     <div class="daygrid" id="daygrid"></div>
     <div class="chart-legend" style="padding-top:10px"><span><i style="background:linear-gradient(150deg,#fbbf24,#b45309)"></i>Power Day — clean + all bonus habits</span></div>
     <div class="mirror-stat" id="mirror-stat"></div>
+    <div class="compound-stat" id="compound-stat"></div>
+  </div>
+
+  <div class="card" id="trajectory-card" style="display:none">
+    <h3><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>Vote trajectory</h3>
+    <div id="trajectory-chart"></div>
+    <div class="trajectory-caption">The plateau is loading, not failing.</div>
   </div>
 
   <div class="card"><h3><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>Per-rule streaks</h3><div id="per-rule"></div></div>
@@ -143,6 +156,7 @@
     <div class="hint warn" style="margin-top:10px">Ground rules are permanent. Wake-up time can only move earlier. Added rules can be removed after a 24 h cooling-off. Adding a rule never cuts existing streaks.</div>
     <div style="height:12px"></div>
     <div class="field"><input id="new-rule-name" placeholder="New rule, e.g. No energy drinks" maxlength="40"></div>
+    <div class="field" id="new-rule-trait-f" style="display:none"><label>Serves trait (optional)</label><select id="new-rule-trait"><option value="">None</option></select></div>
     <button class="btn ghost small" id="add-rule-btn">Add rule</button>
   </div>
 
@@ -150,6 +164,7 @@
     <div id="set-habits"></div>
     <div style="height:8px"></div>
     <div class="field"><input id="new-habit-name" placeholder="New habit, e.g. Read 20 min" maxlength="30"></div>
+    <div class="field" id="new-habit-trait-f" style="display:none"><label>Serves trait (optional)</label><select id="new-habit-trait"><option value="">None</option></select></div>
     <button class="btn ghost small" id="add-habit-btn">Add habit</button>
     <div class="hint">Extras, not rules — skipping never cuts a streak. A clean day with every habit done becomes a <b style="color:var(--ember-hi)">Power Day</b> ⚡ (gold in history, own counter). Removable anytime.</div>
   </div>
@@ -263,6 +278,7 @@
       <input type="checkbox" id="goal-enforce" checked>
       <span style="font-size:13.5px; font-weight:600">Enforce (escalates to hard rule at pace limit)</span>
     </label>
+    <div class="field" id="goal-trait-f" style="display:none"><label>Serves trait (optional)</label><select id="goal-trait"><option value="">None</option></select></div>
     <button class="btn" id="goal-save">Save goal</button>
     <button class="btn ghost" id="goal-cancel" style="margin-top:10px">Cancel</button>
   </div>

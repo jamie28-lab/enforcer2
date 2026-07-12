@@ -1,10 +1,20 @@
 // ENFORCER 2.0 — SETTINGS view: rules, habits, goals, holidays, reminders, push, phrases, export
 'use strict';
 import { S, save, todayKey, addDays, fmtDate, hm, now, DEFAULT_PHRASES } from './state.js';
-import { wakeRule, goalStatus, ruleName, pending, identityValid } from './engine.js';
+import { wakeRule, goalStatus, ruleName, pending, identityValid, traitVotes30 } from './engine.js';
 import { $, esc, toast, ICONS, ruleIcon, bus } from './ui-shared.js';
 import { requestNotifPermission, randTopic, syncNtfy, syncCfPush, enableCfPush, disableCfPush } from './reminders.js';
 import { openIdentitySetup } from './ui-mirror.js';
+
+/* optional trait tagging (P2) — dropdown markup shared by rule/habit/goal creation flows */
+function traitOptionsHtml() {
+  return `<option value="">None</option>` + S.identity.her.traits.map(tr => `<option value="${tr.id}">${esc(tr.label)}</option>`).join('');
+}
+function traitLabel(traitId) {
+  if (!identityValid() || !traitId) return '';
+  const tr = S.identity.her.traits.find(x => x.id === traitId);
+  return tr ? tr.label : '';
+}
 
 export function renderSettings() {
   const si = $('#set-identity');
@@ -12,13 +22,24 @@ export function renderSettings() {
     si.innerHTML = `<div class="empty-note">Not set up yet. Two portraits: who you're becoming, who you refuse to be.</div><button class="btn ghost small" id="identity-edit-btn" style="margin-top:10px">Set up identity</button>`;
   } else {
     const idn = S.identity;
+    const tv = traitVotes30();
     si.innerHTML = `
       <div class="identity-row"><div class="identity-lbl">${esc(idn.her.name)}</div><div class="identity-portrait">${esc(idn.her.portrait)}</div></div>
       <div class="identity-row"><div class="identity-lbl">${esc(idn.other.name)}</div><div class="identity-portrait">${esc(idn.other.portrait)}</div></div>
-      <div class="identity-traits">${idn.her.traits.map(tr => `<span class="trait-tag">${esc(tr.label)}</span>`).join('')}</div>
+      <div class="identity-traits">${idn.her.traits.map(tr => `<span class="trait-tag">${esc(tr.label)} · <span class="trait-chip-count">${tv[tr.id] || 0}</span></span>`).join('')}</div>
       <button class="btn ghost small" id="identity-edit-btn" style="margin-top:10px">Edit identity</button>`;
   }
   $('#identity-edit-btn').onclick = () => openIdentitySetup();
+
+  // trait selects for rule/habit creation — only when identity exists
+  const nrtf = $('#new-rule-trait-f'), nhtf = $('#new-habit-trait-f');
+  if (identityValid()) {
+    nrtf.style.display = ''; $('#new-rule-trait').innerHTML = traitOptionsHtml();
+    nhtf.style.display = ''; $('#new-habit-trait').innerHTML = traitOptionsHtml();
+  } else {
+    nrtf.style.display = 'none';
+    nhtf.style.display = 'none';
+  }
 
   const sr = $('#set-rules'); sr.innerHTML = '';
   for (const r of S.rules.filter(r => !r.removedOn)) {
@@ -51,16 +72,24 @@ export function renderSettings() {
   const liveHabits = S.habits.filter(h => !h.removedOn);
   if (!liveHabits.length) sh.innerHTML = '<div class="empty-note">No bonus habits yet. These are the extra-credit layer.</div>';
   for (const hb of liveHabits) {
+    const traitMeta = hb.traitId && identityValid() ? ` · serves ${esc(traitLabel(hb.traitId))}` : '';
     sh.insertAdjacentHTML('beforeend', `
       <div class="set-rule">
         <div class="rule-ico">${ICONS.zap}</div>
-        <div style="flex:1"><div class="rule-name">${esc(hb.name)}</div><div class="rule-meta">Added ${fmtDate(hb.addedOn)}</div></div>
+        <div style="flex:1"><div class="rule-name">${esc(hb.name)}</div><div class="rule-meta">Added ${fmtDate(hb.addedOn)}${traitMeta}</div></div>
+        <input type="number" class="minutes-in" min="1" max="120" value="${hb.minutes || 5}" data-hmin="${hb.id}" aria-label="Minutes for ${esc(hb.name)}">
         <button class="mini-link danger" data-hdel="${hb.id}">Remove</button>
       </div>`);
   }
   sh.querySelectorAll('[data-hdel]').forEach(b => b.onclick = () => {
     const hb = S.habits.find(x => x.id === b.dataset.hdel);
     hb.removedOn = todayKey(); save(); bus.refresh(); toast('Habit removed. Past Power Days stay earned.');
+  });
+  sh.querySelectorAll('[data-hmin]').forEach(inp => inp.onchange = () => {
+    const hb = S.habits.find(x => x.id === inp.dataset.hmin);
+    let v = Math.round(parseFloat(inp.value)) || 5;
+    v = Math.max(1, Math.min(120, v));
+    inp.value = v; hb.minutes = v; save(); bus.refresh();
   });
 
   // goals
@@ -155,6 +184,9 @@ function openGoalSheet() {
   goalType = 'freq';
   $('#goal-name').value = ''; $('#goal-target').value = ''; $('#goal-unit').value = ''; $('#goal-date').value = '';
   $('#goal-enforce').checked = true;
+  const gtf = $('#goal-trait-f');
+  if (identityValid()) { gtf.style.display = ''; $('#goal-trait').innerHTML = traitOptionsHtml(); $('#goal-trait').value = ''; }
+  else gtf.style.display = 'none';
   updateGoalTypeUI();
   $('#goal-veil').classList.add('open');
 }
@@ -168,7 +200,8 @@ function updateGoalTypeUI() {
 function saveGoal() {
   const name = $('#goal-name').value.trim();
   if (!name) { toast('Name the goal.'); return; }
-  const g = { id: 'g' + Date.now(), name, type: goalType, enforce: $('#goal-enforce').checked, completed: false };
+  const traitId = identityValid() ? ($('#goal-trait').value || null) : null;
+  const g = { id: 'g' + Date.now(), name, type: goalType, enforce: $('#goal-enforce').checked, completed: false, traitId };
   if (goalType === 'mile') { const dt = $('#goal-date').value; if (!dt || dt <= todayKey()) { toast('Pick a future deadline.'); return; } g.date = dt; }
   else { const tg = parseFloat($('#goal-target').value); if (!tg || tg <= 0) { toast('Set a target.'); return; } g.target = tg; if (goalType === 'cume') g.unit = $('#goal-unit').value.trim() || 'units'; }
   S.goals.push(g); save();
@@ -183,7 +216,8 @@ export function wireSettings() {
     const name = $('#new-rule-name').value.trim();
     if (!name) { toast('Name the rule first.'); return; }
     if (S.rules.filter(r => !r.removedOn).length >= 5) { toast('Five rules max. Master these before adding more.'); return; }
-    S.rules.push({ id: 'r' + Date.now(), name, kind: 'abstain', ground: false, addedOn: addDays(todayKey(), 1), removedOn: null, removalPendingUntil: null });
+    const traitId = identityValid() ? ($('#new-rule-trait').value || null) : null;
+    S.rules.push({ id: 'r' + Date.now(), name, kind: 'abstain', ground: false, addedOn: addDays(todayKey(), 1), removedOn: null, removalPendingUntil: null, traitId });
     $('#new-rule-name').value = ''; save(); bus.refresh();
     toast('Rule added — counts from tomorrow. Every streak you\'ve built stays intact.');
   };
@@ -191,7 +225,8 @@ export function wireSettings() {
     const name = $('#new-habit-name').value.trim();
     if (!name) { toast('Name the habit first.'); return; }
     if (S.habits.filter(h => !h.removedOn).length >= 7) { toast('Seven extras max — a Power Day should be hard, not a chore list.'); return; }
-    S.habits.push({ id: 'h' + Date.now(), name, addedOn: todayKey(), removedOn: null });
+    const traitId = identityValid() ? ($('#new-habit-trait').value || null) : null;
+    S.habits.push({ id: 'h' + Date.now(), name, addedOn: todayKey(), removedOn: null, minutes: 5, traitId });
     $('#new-habit-name').value = ''; save(); bus.refresh();
     toast('Bonus habit added — counts from today. Zero risk, pure upside.');
   };

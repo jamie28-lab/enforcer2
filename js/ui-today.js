@@ -5,6 +5,7 @@ import {
   activeRules, wakeRule, isHoliday, day, ensureDay, ruleOutcome, dayClean, currentStreak,
   streakEndingAt, perRuleStreak, bestStreakEver, lifetimeClean, activeHabits, isPowerDay,
   lifetimePower, goalStatus, ruleName, pick, stageFor, settle, pending, identityValid,
+  voteBalance, lifetimeHabitDone,
 } from './engine.js';
 import { $, esc, toast, ICONS, ruleIcon, bus, setNumber, showShame, showCelebration } from './ui-shared.js';
 import { requestNotifPermission } from './reminders.js';
@@ -61,6 +62,26 @@ export function renderToday() {
   setNumber($('#tile-badges'), S.badges.length);
   setNumber($('#tile-power'), lifetimePower());
 
+  // identity balance bar
+  const bc = $('#balance-card');
+  if (!identityValid()) { bc.style.display = 'none'; }
+  else {
+    bc.style.display = '';
+    const bal = voteBalance(30);
+    const total = bal.her + bal.other;
+    $('#balance-fill').style.width = (total ? bal.pct : 50) + '%';
+    $('#balance-label').innerHTML = total
+      ? `<b>${esc(S.identity.her.name)} ${bal.pct}%</b> — last 30 days (${bal.her}-${bal.other})`
+      : `<b>${esc(S.identity.her.name)} vs ${esc(S.identity.other.name)}</b> — no votes cast yet`;
+    $('#balance-sentence').textContent = !total
+      ? 'The ballot opens now. Every action is a vote.'
+      : bal.pct >= 80
+        ? 'Consistency is what you are most of the time. Keep raising it.'
+        : bal.pct >= 50
+          ? 'Contested. Every vote today matters.'
+          : `${S.identity.other.name} is winning the month. Change that today.`;
+  }
+
   // wake card
   const wr = wakeRule(); const wc = $('#wake-card');
   if (hol) {
@@ -113,8 +134,15 @@ export function renderToday() {
     hc.style.display = ''; hchips.innerHTML = '';
     const doneMap = d.habitsDone || {};
     for (const hb of habs) {
-      hchips.insertAdjacentHTML('beforeend',
-        `<button class="habit-chip ${doneMap[hb.id] ? 'done' : ''}" data-habit="${hb.id}">${doneMap[hb.id] ? ICONS.check : ICONS.zap}${esc(hb.name)}</button>`);
+      const minutes = hb.minutes || 5;
+      const votes = lifetimeHabitDone(hb);
+      const hours = (votes * minutes / 60).toFixed(1);
+      const yearHours = (365 * minutes / 60).toFixed(1);
+      hchips.insertAdjacentHTML('beforeend', `
+        <div class="habit-item">
+          <button class="habit-chip ${doneMap[hb.id] ? 'done' : ''}" data-habit="${hb.id}">${doneMap[hb.id] ? ICONS.check : ICONS.zap}${esc(hb.name)}</button>
+          <div class="habit-vote-line">${votes} votes · ${hours} h — a year daily = ${yearHours} h</div>
+        </div>`);
     }
     hchips.querySelectorAll('[data-habit]').forEach(b => b.onclick = () => {
       const dd = ensureDay(t); dd.habitsDone = dd.habitsDone || {};
