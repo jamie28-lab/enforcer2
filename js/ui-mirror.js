@@ -1,9 +1,9 @@
 // ENFORCER 2.0 — Morning Mirror overlay + Identity setup sheet
 'use strict';
 import { S, save, todayKey, hm, now } from './state.js';
-import { activeRules, wakeRule, isHoliday, day, ruleName, activeHabits, goalStatus, identityValid, votesOnDay } from './engine.js';
+import { activeRules, wakeRule, isHoliday, day, ruleName, activeHabits, goalStatus, identityValid, votesOnDay, isComebackDay } from './engine.js';
 import { $, esc, bus, ICONS, toast } from './ui-shared.js';
-import { logWakeUp } from './ui-today.js';
+import { logWakeUp, openStudy } from './ui-today.js';
 import { dueCards } from './srs.js';
 
 /* ---------- Morning Mirror ---------- */
@@ -48,11 +48,15 @@ function paintMirror() {
     }).join('');
     const habitsHtml = activeHabits(t).map(h => `<div class="mirror-habit">${esc(h.name)}</div>`).join('');
     const dueN = dueCards(null, t).length;
+    const comeback = isComebackDay(t);
+    const mistakesDue = dueCards('mistakes', t).length;
+    const forceStudy = comeback && mistakesDue > 0 && !S.mirrorStudyDone[t];
 
     box.innerHTML = `
       ${wakeStripHtml(t)}
       <div class="mirror-date">${parseMirrorDate(t)}</div>
       <div class="mirror-kicker">MORNING MIRROR</div>
+      ${comeback ? `<div class="mirror-comeback-line">Yesterday broke. Today decides if it becomes a pattern.</div>` : ''}
       ${rulesHtml ? `<div class="mirror-section"><div class="mirror-section-lbl">Today's rules</div>${rulesHtml}</div>` : ''}
       ${goalsHtml ? `<div class="mirror-section"><div class="mirror-section-lbl">Goals</div>${goalsHtml}</div>` : ''}
       ${habitsHtml ? `<div class="mirror-section"><div class="mirror-section-lbl">Today's small votes</div>${habitsHtml}</div>` : ''}
@@ -60,12 +64,14 @@ function paintMirror() {
       <div class="mirror-portrait">${esc(id.her.portrait)}</div>
       <div class="mirror-bottom">
         <div class="mirror-question">Who are you today?</div>
+        ${forceStudy ? `<div class="mirror-force-study"><button class="btn" id="mirror-study-btn">Study ${mistakesDue} mistake card${mistakesDue === 1 ? '' : 's'} first</button></div>` : ''}
         <div class="mirror-choices">
-          <button class="btn" id="mirror-her-btn">${esc(id.her.name)}</button>
-          <button class="btn ghost" id="mirror-other-btn">${esc(id.other.name)}</button>
+          <button class="btn" id="mirror-her-btn" ${forceStudy ? 'disabled' : ''}>${esc(id.her.name)}</button>
+          <button class="btn ghost" id="mirror-other-btn" ${forceStudy ? 'disabled' : ''}>${esc(id.other.name)}</button>
         </div>
       </div>`;
     wireMirrorWake();
+    if (forceStudy) $('#mirror-study-btn').onclick = e => { e.stopPropagation(); openStudy('mistakes', true); };
     $('#mirror-her-btn').onclick = e => { e.stopPropagation(); logMirrorAnswer('her'); mirrorStage = 'affirmation'; paintMirror(); bus.refresh(false); };
     $('#mirror-other-btn').onclick = () => { mirrorStage = 'confrontation'; paintMirror(); };
   } else if (mirrorStage === 'confrontation') {
@@ -160,6 +166,7 @@ function saveIdentity() {
   bus.refresh();
 }
 export function wireIdentitySetup() {
+  bus.repaintMirror = () => { if ($('#mirror-veil').classList.contains('open')) paintMirror(); };
   $('#identity-invite-btn').onclick = () => openIdentitySetup();
   $('#id-trait-add').onclick = addTrait;
   $('#id-trait-input').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addTrait(); } });

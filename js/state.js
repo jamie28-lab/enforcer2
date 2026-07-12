@@ -100,6 +100,8 @@ export function freshState() {
     gym: [],
     meals: [],
     mirror: {},
+    mirrorStudyDone: {},
+    contract: null,
   };
 }
 
@@ -146,6 +148,8 @@ function normalize() {
   S.cfPushNeedsReenable = S.cfPushNeedsReenable || false;
   S.migratedFromV1 = S.migratedFromV1 || false;
   if (!('identity' in S)) S.identity = null;
+  if (!('contract' in S)) S.contract = null;
+  S.mistakes = (S.mistakes || []).map(m => ('motive' in m) ? m : { ...m, motive: null });
   S.votes = S.votes || [];
   S.decks = S.decks || {};
   S.gym = S.gym || [];
@@ -158,9 +162,11 @@ function normalize() {
     }
     S.p1Migrated = true;
   }
+  S.mirrorStudyDone = S.mirrorStudyDone || {};
   // prune stale lastReminderFired keys older than today
   const t0 = todayKey();
   for (const k of Object.keys(S.lastReminderFired)) { if (k.split('@')[0] < t0) delete S.lastReminderFired[k]; }
+  for (const k of Object.keys(S.mirrorStudyDone)) { if (k < t0) delete S.mirrorStudyDone[k]; }
 }
 
 export function save() { localStorage.setItem(LS_KEY, JSON.stringify(S)); }

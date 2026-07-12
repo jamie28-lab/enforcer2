@@ -150,6 +150,34 @@ export function lifetimePower() {
   return n;
 }
 
+/* ---------- P3: recovery & comeback ---------- */
+/* % of fail days immediately followed by a clean day (holidays skipped when finding "next day").
+   null if there are no breaks yet. Only counts breaks whose next-day outcome is already settled. */
+export function recoveryScore() {
+  const t = todayKey();
+  let breaks = 0, recovered = 0, cur = S.createdAt;
+  while (cur < t) {
+    if (dayClean(cur, true) === 'fail') {
+      let next = addDays(cur, 1);
+      while (next < t && isHoliday(next)) next = addDays(next, 1);
+      if (next < t) {
+        breaks++;
+        if (dayClean(next, true) === 'pass') recovered++;
+      }
+    }
+    cur = addDays(cur, 1);
+  }
+  return breaks === 0 ? null : Math.round(100 * recovered / breaks);
+}
+/* the day after a fail day (skipping holidays) — never-miss-twice pressure day. Never true on a holiday itself. */
+export function isComebackDay(k) {
+  if (isHoliday(k)) return false;
+  let prev = addDays(k, -1);
+  while (prev >= S.createdAt && isHoliday(prev)) prev = addDays(prev, -1);
+  if (prev < S.createdAt) return false;
+  return dayClean(prev, true) === 'fail';
+}
+
 /* ---------- morning mirror ---------- */
 /* Treat a hand-imported malformed identity as "not set up" everywhere. */
 export function identityValid() {
@@ -188,8 +216,9 @@ export function votesOnDay(k) {
 
   // HER: +1 per bonus habit done that day
   for (const h of activeHabits(k)) if ((d.habitsDone || {})[h.id]) her++;
-  // HER: +1 if the day is clean (same pass/fail/open semantics as everywhere else in engine.js)
-  if (dayClean(k, final) === 'pass') her++;
+  // HER: +1 if the day is clean (same pass/fail/open semantics as everywhere else in engine.js);
+  // DOUBLE (+2, P3) when k is a comeback day that ends clean — never-miss-twice pays double.
+  if (dayClean(k, final) === 'pass') her += isComebackDay(k) ? 2 : 1;
   // HER: +1 if the morning mirror was answered for her
   const m = S.mirror[k];
   if (m && (m.answer === 'her' || m.answer === 'her-after-confrontation')) her++;
@@ -263,6 +292,33 @@ export function lifetimeHabitDone(h) {
   return n;
 }
 
+/* ---------- P3: known weaknesses (derived, like votes — computed, never stored) ---------- */
+export function weaknesses() {
+  const out = [];
+  const byMotive = {}, byWeekday = {}, byRule = {};
+  for (const m of S.mistakes) {
+    if (m.motive) (byMotive[m.motive] = byMotive[m.motive] || []).push(m);
+    const wd = parseKey(m.date).getDay();
+    (byWeekday[wd] = byWeekday[wd] || []).push(m);
+    (byRule[m.ruleId] = byRule[m.ruleId] || []).push(m);
+  }
+  for (const [key, list] of Object.entries(byMotive)) if (list.length >= 2) out.push({ kind: 'motive', key, count: list.length, evidence: list });
+  for (const [key, list] of Object.entries(byWeekday)) if (list.length >= 2) out.push({ kind: 'weekday', key: Number(key), count: list.length, evidence: list });
+  for (const [key, list] of Object.entries(byRule)) if (list.length >= 2) out.push({ kind: 'rule', key, count: list.length, evidence: list });
+  out.sort((a, b) => b.count - a.count);
+  return out;
+}
+/* most recent OTHER mistake (excluding the mistake at date+ruleId itself) sharing this rule OR this motive, with a non-empty note.
+   S.mistakes is newest-first (unshift-only), so the first match walking forward is the most recent. */
+export function priorMatchingNote(date, ruleId, motive) {
+  for (const m of S.mistakes) {
+    if (m.date === date && m.ruleId === ruleId) continue;
+    if (!m.note || !m.note.trim()) continue;
+    if (m.ruleId === ruleId || (motive && m.motive === motive)) return m;
+  }
+  return null;
+}
+
 /* ---------- goals ---------- */
 export const weekStart = k => { const d = parseKey(k); const off = (d.getDay() + 6) % 7; d.setDate(d.getDate() - off); return dkey(d); };
 export function goalWeekProgress(g) {
@@ -323,17 +379,17 @@ export function settle() {
         for (const r of activeRules(cur)) {
           if (ruleOutcome(r, cur, true) === false && !S.mistakes.some(m => m.date === cur && m.ruleId === r.id)) {
             const lost = streakEndingAt(addDays(cur, -1));
-            S.mistakes.unshift({ date: cur, ruleId: r.id, ruleName: ruleName(r), lost, note: '' });
+            S.mistakes.unshift({ date: cur, ruleId: r.id, ruleName: ruleName(r), lost, note: '', motive: null });
             draftMistakeCard(S.mistakes[0]);
-            pending.shame = pending.shame || { lost, rule: ruleName(r), date: cur };
+            pending.shame = pending.shame || { lost, rule: ruleName(r), date: cur, ruleId: r.id };
           }
         }
         for (const g of S.goals) {
           if (goalOutcomeOnDay(g, cur, true) === false && !S.mistakes.some(m => m.date === cur && m.ruleId === 'goal-' + g.id)) {
             const lost = streakEndingAt(addDays(cur, -1));
-            S.mistakes.unshift({ date: cur, ruleId: 'goal-' + g.id, ruleName: `Goal: ${g.name}`, lost, note: '' });
+            S.mistakes.unshift({ date: cur, ruleId: 'goal-' + g.id, ruleName: `Goal: ${g.name}`, lost, note: '', motive: null });
             draftMistakeCard(S.mistakes[0]);
-            pending.shame = pending.shame || { lost, rule: `Goal: ${g.name}`, date: cur };
+            pending.shame = pending.shame || { lost, rule: `Goal: ${g.name}`, date: cur, ruleId: 'goal-' + g.id };
           }
         }
       }
@@ -346,9 +402,9 @@ export function settle() {
   const td = ensureDay(t);
   if (!isHoliday(t) && activeRules(t).some(r => r.kind === 'wake') && !td.wake && hm(now()) > wr.wakeTime && !S.mistakes.some(m => m.date === t && m.ruleId === wr.id)) {
     const lost = streakEndingAt(addDays(t, -1));
-    S.mistakes.unshift({ date: t, ruleId: wr.id, ruleName: ruleName(wr), lost, note: '' });
+    S.mistakes.unshift({ date: t, ruleId: wr.id, ruleName: ruleName(wr), lost, note: '', motive: null });
     draftMistakeCard(S.mistakes[0]);
-    pending.shame = pending.shame || { lost, rule: ruleName(wr), date: t };
+    pending.shame = pending.shame || { lost, rule: ruleName(wr), date: t, ruleId: wr.id };
   }
   // execute pending rule removals past their cooldown
   for (const r of S.rules) {

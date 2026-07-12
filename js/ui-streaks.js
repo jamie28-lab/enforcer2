@@ -1,7 +1,7 @@
 // ENFORCER 2.0 — STREAKS view: 30-day chart, day grid, per-rule streaks, badge wall, crowns
 'use strict';
 import { S, todayKey, addDays, parseKey, fmtDate, MILESTONES } from './state.js';
-import { activeRules, dayClean, streakEndingAt, perRuleStreak, isPowerDay, crowns, ruleName, mirrorHerCount30, identityValid, voteTrajectory, lifetimeClean } from './engine.js';
+import { activeRules, dayClean, streakEndingAt, perRuleStreak, isPowerDay, crowns, ruleName, mirrorHerCount30, identityValid, voteTrajectory, lifetimeClean, recoveryScore } from './engine.js';
 import { $, esc, ICONS, ruleIcon } from './ui-shared.js';
 import { retention30, forecast } from './srs.js';
 
@@ -74,6 +74,11 @@ export function renderStreaks() {
   // mirror stat
   const ms = $('#mirror-stat');
   ms.innerHTML = identityValid() ? `${ICONS.mirror} Mirror — <b>${mirrorHerCount30()}/30</b> mornings chosen` : '';
+
+  // P3: recovery stat — never-miss-twice
+  const rs = $('#recovery-stat');
+  const rec = recoveryScore();
+  rs.innerHTML = rec === null ? '' : `${ICONS.check} Recovery — <b>${rec}%</b> never-miss-twice`;
 
   // 1.01^n compounding reframe
   const cs = $('#compound-stat');

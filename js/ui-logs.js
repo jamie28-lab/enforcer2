@@ -1,10 +1,77 @@
 // ENFORCER 2.0 — LOGS view: mistake log + playbook
 'use strict';
 import { S, save, todayKey, fmtDate } from './state.js';
+import { weaknesses, identityValid } from './engine.js';
 import { $, esc, toast, bus } from './ui-shared.js';
 import { findMistakeCard } from './srs.js';
+import { syncNtfy, syncCfPush } from './reminders.js';
+
+const MOTIVES = [['stress', 'Stress'], ['boredom', 'Boredom'], ['social', 'Social'], ['tired', 'Tired'], ['craving', 'Craving'], ['other', 'Other']];
+const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const NUM_WORDS = { 2: 'Two', 3: 'Three', 4: 'Four', 5: 'Five' };
+function weaknessLabel(w) {
+  if (w.kind === 'motive') return w.key.charAt(0).toUpperCase() + w.key.slice(1);
+  if (w.kind === 'weekday') return WEEKDAY_NAMES[w.key];
+  return w.evidence[0].ruleName;
+}
+function weaknessSentence(w) {
+  const otherName = identityValid() ? S.identity.other.name : 'The pattern';
+  const cw = NUM_WORDS[w.count] || String(w.count);
+  if (w.kind === 'weekday') return `${cw} of your breaks happened on ${WEEKDAY_NAMES[w.key]}s. ${esc(otherName)} knows your calendar.`;
+  if (w.kind === 'motive') return `${weaknessLabel(w)} has taken ${w.count} days from you.`;
+  return `${esc(weaknessLabel(w))} is your weakest front — ${w.count} falls.`;
+}
+function weaknessRemId(w) {
+  if (w.kind === 'weekday') return 'rem-wk-' + w.key;
+  if (w.kind === 'motive') return 'rem-mot-' + w.key;
+  return 'rem-rule-' + w.key;
+}
+function weaknessRemText(w) {
+  if (w.kind === 'weekday') return `${WEEKDAY_NAMES[w.key]} night. ${(NUM_WORDS[w.count] || w.count)} breaks happened on nights like this. Not tonight.`;
+  if (w.kind === 'motive') return `${weaknessLabel(w)} preceded ${w.count} of your breaks. Watch for it today.`;
+  return `${w.evidence[0].ruleName} is your weakest front — ${w.count} falls already. Not today.`;
+}
 
 export function renderLogs() {
+  const wc = $('#weakness-card'), wl = $('#weakness-list');
+  const wks = weaknesses();
+  if (!wks.length) { wc.style.display = 'none'; }
+  else {
+    wc.style.display = '';
+    wl.innerHTML = wks.map(w => {
+      const id = weaknessRemId(w);
+      const armed = S.reminders.some(r => r.id === id);
+      return `
+      <div class="weakness-row">
+        <div class="weakness-top"><span class="weakness-label">${esc(weaknessLabel(w))} — ${w.count} breaks</span></div>
+        <div class="weakness-sentence">${weaknessSentence(w)}</div>
+        <div class="weakness-arm-row">
+          <span class="rule-name" style="font-size:13px">Arm reminder</span>
+          <label class="row" style="justify-content:flex-start; gap:8px; cursor:pointer">
+            <input type="checkbox" class="weakness-arm-toggle" data-kind="${w.kind}" data-key="${w.key}" ${armed ? 'checked' : ''}>
+          </label>
+        </div>
+      </div>`;
+    }).join('');
+    wl.querySelectorAll('.weakness-arm-toggle').forEach(cb => cb.onchange = () => {
+      const w = wks.find(x => x.kind === cb.dataset.kind && String(x.key) === cb.dataset.key);
+      if (!w) return;
+      const id = weaknessRemId(w);
+      if (cb.checked) {
+        if (!S.reminders.some(r => r.id === id)) {
+          const rem = w.kind === 'weekday'
+            ? { id, text: weaknessRemText(w), time: '18:00', repeat: 'weekly', day: w.key }
+            : { id, text: weaknessRemText(w), time: '18:00', repeat: 'daily' };
+          S.reminders.push(rem);
+        }
+      } else {
+        S.reminders = S.reminders.filter(r => r.id !== id);
+      }
+      save(); syncNtfy(); syncCfPush(); bus.refresh(false);
+      toast(cb.checked ? 'Reminder armed.' : 'Reminder disarmed.');
+    });
+  }
+
   const ml = $('#mistake-list'); ml.innerHTML = '';
   if (!S.mistakes.length) ml.innerHTML = '<div class="empty-note">No breaks yet. Keep it that way.</div>';
   S.mistakes.forEach((m, i) => {
@@ -13,6 +80,7 @@ export function renderLogs() {
       <div class="log-entry">
         <div class="log-head"><span class="log-rule">${esc(m.ruleName)}</span><span class="log-date">${fmtDate(m.date)}</span></div>
         <div class="log-lost">Cut a ${m.lost}-day streak</div>
+        <div class="motive-row" data-mmi="${i}">${MOTIVES.map(([k, l]) => `<button type="button" class="motive-chip ${m.motive === k ? 'on' : ''}" data-m="${k}">${l}</button>`).join('')}</div>
         ${m.note ? `<div class="log-note-txt">${esc(m.note)}</div>` : `<input class="log-note-in" data-mi="${i}" placeholder="What happened? One honest line." maxlength="120">`}
         ${card ? `<button class="mistake-card-link" data-cardid="${card.id}">${card.suspended ? 'Card (suspended)' : 'Card'} ✎</button>` : ''}
       </div>`);
@@ -21,6 +89,13 @@ export function renderLogs() {
   ml.querySelectorAll('.log-note-in').forEach(inp => {
     inp.addEventListener('keydown', e => { if (e.key === 'Enter' && inp.value.trim()) { S.mistakes[+inp.dataset.mi].note = inp.value.trim(); save(); renderLogs(); } });
     inp.addEventListener('blur', () => { if (inp.value.trim()) { S.mistakes[+inp.dataset.mi].note = inp.value.trim(); save(); renderLogs(); } });
+  });
+  ml.querySelectorAll('.motive-row').forEach(row => {
+    row.querySelectorAll('[data-m]').forEach(b => b.onclick = () => {
+      const m = S.mistakes[+row.dataset.mmi];
+      m.motive = m.motive === b.dataset.m ? null : b.dataset.m;
+      save(); renderLogs();
+    });
   });
 
   const pl = $('#playbook-list'); pl.innerHTML = '';

@@ -39,6 +39,7 @@ export function reminderTick() {
       }
       return true;                                          // today, time not reached yet
     }
+    if (r.repeat === 'weekly' && now().getDay() !== r.day) return true;   // P3: not this weekday — keep, don't evaluate firing
     const fk = t + '@' + r.id;
     if (cur >= r.time && S.lastReminderFired[fk] !== true) {
       // only fire within 5 min of the slot to avoid stale bursts on open
@@ -69,6 +70,15 @@ function reminderOccurrences(r) {
   if (r.repeat === 'once') {
     const occ = parseKey(r.date); occ.setHours(h, m, 0, 0);
     if (occ > nowD && occ - nowD <= 68 * 3600000) out.push(occ);
+    return out;
+  }
+  if (r.repeat === 'weekly') {                              // P3: only the matching weekday
+    for (let i = 0; i < 8 && out.length < 3; i++) {
+      const k = addDays(todayKey(), i);
+      if (parseKey(k).getDay() !== r.day) continue;
+      const occ = parseKey(k); occ.setHours(h, m, 0, 0);
+      if (occ > nowD && occ - nowD <= 68 * 3600000) out.push(occ);
+    }
     return out;
   }
   // daily: next 3 occurrences within 68h

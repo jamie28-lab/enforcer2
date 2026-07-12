@@ -7,6 +7,8 @@ import { requestNotifPermission, randTopic, syncNtfy, syncCfPush, enableCfPush, 
 import { openIdentitySetup } from './ui-mirror.js';
 import { deckStats } from './srs.js';
 
+const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
 /* optional trait tagging (P2) — dropdown markup shared by rule/habit/goal creation flows */
 function traitOptionsHtml() {
   return `<option value="">None</option>` + S.identity.her.traits.map(tr => `<option value="${tr.id}">${esc(tr.label)}</option>`).join('');
@@ -31,6 +33,9 @@ export function renderSettings() {
       <button class="btn ghost small" id="identity-edit-btn" style="margin-top:10px">Edit identity</button>`;
   }
   $('#identity-edit-btn').onclick = () => openIdentitySetup();
+
+  // P3: self-contract
+  $('#contract-text').value = (S.contract && S.contract.text) ? S.contract.text : '';
 
   // trait selects for rule/habit creation — only when identity exists
   const nrtf = $('#new-rule-trait-f'), nhtf = $('#new-habit-trait-f');
@@ -128,7 +133,7 @@ export function renderSettings() {
         <input type="time" value="${r.time}" data-rt="${r.id}" class="inline-time">
         <input value="${esc(r.text)}" data-rx="${r.id}" maxlength="80" class="rem-text-in">
         <button class="mini-link danger" data-rdel="${r.id}" aria-label="Delete reminder">${ICONS.x.replace('viewBox', 'width="14" height="14" viewBox')}</button>
-        <div class="rule-meta" style="width:100%">${r.repeat === 'once' ? 'Once — ' + fmtDate(r.date) : 'Daily'}</div>
+        <div class="rule-meta" style="width:100%">${r.repeat === 'once' ? 'Once — ' + fmtDate(r.date) : r.repeat === 'weekly' ? 'Weekly — ' + WEEKDAY_NAMES[r.day] + 's' : 'Daily'}</div>
       </div>`);
   });
   rl.querySelectorAll('[data-rt]').forEach(inp => inp.onchange = () => { const r = S.reminders.find(x => x.id === inp.dataset.rt); if (r) { r.time = inp.value; save(); syncNtfy(); syncCfPush(); } });
@@ -220,6 +225,11 @@ function saveGoal() {
 
 /* ---------- one-time wiring ---------- */
 export function wireSettings() {
+  $('#contract-save').onclick = () => {
+    const v = $('#contract-text').value.trim();
+    S.contract = v ? { text: v, updatedAt: todayKey() } : null;
+    save(); toast(v ? 'Contract saved.' : 'Contract cleared.');
+  };
   $('#add-rule-btn').onclick = () => {
     const name = $('#new-rule-name').value.trim();
     if (!name) { toast('Name the rule first.'); return; }

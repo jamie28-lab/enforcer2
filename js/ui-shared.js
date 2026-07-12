@@ -1,12 +1,13 @@
 // ENFORCER 2.0 — shared UI: $ helpers, toast, icons, confetti, overlays, render bus
 'use strict';
 import { S, save } from './state.js';
-import { pick, bestStreakEver, pending } from './engine.js';
+import { pick, bestStreakEver, pending, priorMatchingNote } from './engine.js';
 
 /* Render bus — app.js wires the real functions in; avoids circular imports. */
 export const bus = {
   refresh: () => {},
   renderSettings: () => {},
+  repaintMirror: () => {},
 };
 
 export const $ = s => document.querySelector(s);
@@ -60,13 +61,43 @@ export function showCelebration(c) {
   $('#celebrate-veil').classList.add('open');
   confetti();
 }
+const MOTIVES = [['stress', 'Stress'], ['boredom', 'Boredom'], ['social', 'Social'], ['tired', 'Tired'], ['craving', 'Craving'], ['other', 'Other']];
 let shameCtx = null;
+let shameMistake = null;
+function renderShameMotives() {
+  const box = $('#shame-motive-row');
+  box.innerHTML = MOTIVES.map(([k, l]) => `<button type="button" class="motive-chip ${shameMistake && shameMistake.motive === k ? 'on' : ''}" data-m="${k}">${l}</button>`).join('');
+  box.querySelectorAll('[data-m]').forEach(b => b.onclick = () => {
+    if (!shameMistake) return;
+    shameMistake.motive = b.dataset.m;
+    save();
+    box.querySelectorAll('.motive-chip').forEach(x => x.classList.toggle('on', x === b));
+    renderShameRepeat();
+  });
+}
+function renderShameRepeat() {
+  const box = $('#shame-repeat');
+  const prior = shameMistake ? priorMatchingNote(shameMistake.date, shameMistake.ruleId, shameMistake.motive) : null;
+  if (!prior) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  box.style.display = '';
+  box.innerHTML = `<div class="shame-repeat-lbl">You wrote this last time:</div><div class="shame-repeat-note">"${esc(prior.note)}"</div><div class="shame-repeat-line">You knew. You did it anyway.</div>`;
+}
+function renderShameContract() {
+  const box = $('#shame-contract');
+  if (!S.contract || !S.contract.text || !S.contract.text.trim()) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  box.style.display = '';
+  box.innerHTML = `<div class="contract-box"><div class="contract-lbl">Your contract</div><div class="contract-text">${esc(S.contract.text)}</div></div>`;
+}
 export function showShame(ctx) {
   shameCtx = ctx;
+  shameMistake = (ctx.ruleId != null) ? (S.mistakes.find(m => m.date === ctx.date && m.ruleId === ctx.ruleId) || null) : null;
   $('#shame-num').textContent = ctx.lost;
   $('#shame-title').textContent = ctx.rule;
   $('#shame-line').innerHTML = pick('shame', { lost: ctx.lost, record: bestStreakEver() }) + `<br>Record to beat: <b>${bestStreakEver()}</b>.`;
   $('#shame-note').value = '';
+  renderShameContract();
+  renderShameRepeat();
+  renderShameMotives();
   $('#shame-veil').classList.add('open');
 }
 export function confetti() {
@@ -96,7 +127,7 @@ export function wireOverlays() {
   };
   $('#shame-ok').onclick = () => {
     const note = $('#shame-note').value.trim();
-    if (note && shameCtx) { const m = S.mistakes.find(m => m.date === shameCtx.date && !m.note); if (m) m.note = note; save(); }
+    if (note) { const m = shameMistake || S.mistakes.find(m => m.date === shameCtx.date && !m.note); if (m) { m.note = note; save(); } }
     $('#shame-veil').classList.remove('open');
     if (pending.shame) { showShame(pending.shame); pending.shame = null; }
     bus.refresh(false);

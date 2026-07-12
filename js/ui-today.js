@@ -5,7 +5,7 @@ import {
   activeRules, wakeRule, isHoliday, day, ensureDay, ruleOutcome, dayClean, currentStreak,
   streakEndingAt, perRuleStreak, bestStreakEver, lifetimeClean, activeHabits, isPowerDay,
   lifetimePower, goalStatus, ruleName, pick, stageFor, settle, pending, identityValid,
-  voteBalance, lifetimeHabitDone,
+  voteBalance, lifetimeHabitDone, isComebackDay,
 } from './engine.js';
 import { $, esc, toast, ICONS, ruleIcon, bus, setNumber, showShame, showCelebration } from './ui-shared.js';
 import { requestNotifPermission } from './reminders.js';
@@ -57,6 +57,9 @@ export function renderToday() {
   const record = bestStreakEver();
   const isComeback = streak <= 3 && S.mistakes.length > 0 && record > streak;
   $('#motto').textContent = pick(isComeback ? 'comeback' : 'morning', { n: Math.max(streak, 1), n1: streak + 1, record, lost: 0 });
+
+  // P3: comeback-day banner — never-miss-twice
+  $('#comeback-banner').style.display = (!hol && isComebackDay(t)) ? '' : 'none';
 
   setNumber($('#tile-lifetime'), lifetimeClean());
   setNumber($('#tile-record'), record);
@@ -201,6 +204,7 @@ function renderRecall() {
 }
 
 let studySession = null;   // { cards:[...], idx:0 }
+let studyForcedFromMirror = false;
 function intervalLabel(due, todayK) {
   return due === todayK ? 'today' : `${dayDiff(todayK, due)}d`;
 }
@@ -214,17 +218,21 @@ function paintStudyCard() {
   $('#study-show').style.display = '';
   $('#study-grades').style.display = 'none';
 }
-function openStudy() {
+export function openStudy(deckKey, forced) {
   const t = todayKey();
-  const due = dueCards(null, t);
+  const due = dueCards(deckKey || null, t);
   if (!due.length) { toast('Nothing due right now.'); return; }
   studySession = { cards: due, idx: 0 };
+  studyForcedFromMirror = !!forced;
+  $('#study-veil').classList.toggle('above-mirror', !!forced);
   $('#study-veil').classList.add('open');
   paintStudyCard();
 }
 function closeStudy() {
   $('#study-veil').classList.remove('open');
+  $('#study-veil').classList.remove('above-mirror');
   studySession = null;
+  if (studyForcedFromMirror) { studyForcedFromMirror = false; bus.repaintMirror(); }
 }
 function showStudyAnswer() {
   const t = todayKey();
@@ -244,10 +252,14 @@ function gradeStudyCard(grade) {
   save();
   studySession.idx++;
   if (studySession.idx >= studySession.cards.length) {
-    if (dueCards(null, t).length === 0) { S.srsDone[t] = true; save(); }
+    const stillDue = dueCards(null, t).length;
+    if (stillDue === 0) { S.srsDone[t] = true; }
+    // one completed forced pass unlocks the mirror — honest "Again" grades must never trap her
+    if (studyForcedFromMirror) { S.mirrorStudyDone[t] = true; }
+    save();
     closeStudy();
     bus.refresh();
-    toast('Recall session done.');
+    toast(stillDue === 0 ? 'Recall session done.' : `Pass done — ${stillDue} card${stillDue === 1 ? '' : 's'} still due today.`);
   } else {
     paintStudyCard();
   }
@@ -255,10 +267,17 @@ function gradeStudyCard(grade) {
 
 /* ---------- check-in sheet ---------- */
 let checkinDraft = {};
+function renderCheckinContract() {
+  if (!S.contract || !S.contract.text || !S.contract.text.trim()) return;
+  const box = $('#checkin-contract');
+  box.style.display = '';
+  box.innerHTML = `<div class="contract-box"><div class="contract-lbl">Your contract</div><div class="contract-text">${esc(S.contract.text)}</div></div>`;
+}
 export function openCheckin() {
   const t = todayKey(); const d = day(t);
   if (d.checkedIn) return;
   checkinDraft = { answers: {}, goals: {} };
+  $('#checkin-contract').style.display = 'none';
   const box = $('#checkin-items'); box.innerHTML = '';
   for (const r of activeRules(t).filter(r => r.kind !== 'wake')) {
     box.insertAdjacentHTML('beforeend', `
@@ -281,8 +300,10 @@ export function openCheckin() {
       yn.querySelectorAll('button').forEach(x => x.classList.remove('on'));
       b.classList.add('on');
       const val = b.classList.contains('yes');
-      if (yn.dataset.rule) checkinDraft.answers[yn.dataset.rule] = val;
-      else checkinDraft.goals[yn.dataset.goal] = val ? 1 : 0;
+      if (yn.dataset.rule) {
+        checkinDraft.answers[yn.dataset.rule] = val;
+        if (!val) renderCheckinContract();
+      } else checkinDraft.goals[yn.dataset.goal] = val ? 1 : 0;
     });
   });
   $('#checkin-veil').classList.add('open');
@@ -299,14 +320,14 @@ export function submitCheckin() {
   // breaks?
   const broken = rules.filter(r => d.answers[r.id] === false);
   for (const r of broken) if (!S.mistakes.some(m => m.date === t && m.ruleId === r.id)) {
-    S.mistakes.unshift({ date: t, ruleId: r.id, ruleName: ruleName(r), lost: prevStreak, note: '' });
+    S.mistakes.unshift({ date: t, ruleId: r.id, ruleName: ruleName(r), lost: prevStreak, note: '', motive: null });
     draftMistakeCard(S.mistakes[0]);
   }
   // escalated goal answered 0 today -> no more input possible, treat as break now
   for (const gid of (d.escalated || [])) {
     const g = S.goals.find(x => x.id === gid);
     if (g && ((d.goalDone || {})[gid] || 0) <= 0 && !S.mistakes.some(m => m.date === t && m.ruleId === 'goal-' + gid)) {
-      S.mistakes.unshift({ date: t, ruleId: 'goal-' + gid, ruleName: 'Goal: ' + g.name, lost: prevStreak, note: '' });
+      S.mistakes.unshift({ date: t, ruleId: 'goal-' + gid, ruleName: 'Goal: ' + g.name, lost: prevStreak, note: '', motive: null });
       draftMistakeCard(S.mistakes[0]);
       broken.push({ id: 'goal-' + gid });
     }
@@ -314,7 +335,7 @@ export function submitCheckin() {
   save();
   $('#checkin-veil').classList.remove('open');
   if (broken.length) {
-    showShame({ lost: prevStreak, rule: S.mistakes[0].ruleName, date: t });
+    showShame({ lost: prevStreak, rule: S.mistakes[0].ruleName, date: t, ruleId: S.mistakes[0].ruleId });
   } else {
     settle();  // may trigger milestone
     if (pending.celebration) { showCelebration(pending.celebration); pending.celebration = null; }
@@ -327,7 +348,7 @@ export function wireToday() {
   $('#checkin-btn').onclick = openCheckin;
   $('#checkin-submit').onclick = submitCheckin;
   $('#checkin-cancel').onclick = () => $('#checkin-veil').classList.remove('open');
-  $('#recall-study-btn').onclick = openStudy;
+  $('#recall-study-btn').onclick = () => openStudy();
   $('#study-close').onclick = closeStudy;
   $('#study-show').onclick = showStudyAnswer;
   $('#study-grades').querySelectorAll('[data-g]').forEach(b => b.onclick = () => gradeStudyCard(+b.dataset.g));
