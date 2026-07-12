@@ -4,7 +4,7 @@ import { S, save, todayKey, parseKey, addDays, hm, now, fmtDate, MILESTONES } fr
 import {
   activeRules, wakeRule, isHoliday, day, ensureDay, ruleOutcome, dayClean, currentStreak,
   streakEndingAt, perRuleStreak, bestStreakEver, lifetimeClean, activeHabits, isPowerDay,
-  lifetimePower, goalStatus, ruleName, pick, stageFor, settle, pending,
+  lifetimePower, goalStatus, ruleName, pick, stageFor, settle, pending, identityValid,
 } from './engine.js';
 import { $, esc, toast, ICONS, ruleIcon, bus, setNumber, showShame, showCelebration } from './ui-shared.js';
 import { requestNotifPermission } from './reminders.js';
@@ -22,8 +22,17 @@ function renderNotifBanner() {
   }
 }
 
+export function logWakeUp() {
+  const t = todayKey();
+  ensureDay(t).wake = hm(now());
+  save();
+  toast('Wake-up logged: ' + hm(now()));
+  bus.refresh();
+}
+
 export function renderToday() {
   const t = todayKey(), d = day(t), hol = isHoliday(t);
+  $('#identity-invite-card').style.display = identityValid() ? 'none' : '';
   renderNotifBanner();
   $('#today-date').textContent = parseKey(t).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
   const h = now().getHours();
@@ -62,7 +71,7 @@ export function renderToday() {
     wc.innerHTML = `<h3>${ICONS.sun}Wake-up</h3><div class="row"><div><div class="rule-name">Up at ${esc(d.wake)}</div><div class="rule-meta">Target ${esc(wr.wakeTime)} — ${d.wake <= wr.wakeTime ? 'made it' : 'too late'}</div></div><span class="status-pill ${d.wake <= wr.wakeTime ? 'done' : 'failed'}">${d.wake <= wr.wakeTime ? 'Passed' : 'Failed'}</span></div>`;
   } else if (hm(now()) <= wr.wakeTime) {
     wc.innerHTML = `<h3>${ICONS.sun}Wake-up — before ${esc(wr.wakeTime)}</h3><button class="btn wake-btn" id="wake-btn">${ICONS.sun} I'M UP</button><div class="wake-caption">Tap when you're actually vertical. Timestamped, no backsies.</div>`;
-    $('#wake-btn').onclick = () => { ensureDay(t).wake = hm(now()); save(); toast('Wake-up logged: ' + hm(now())); bus.refresh(); };
+    $('#wake-btn').onclick = logWakeUp;
   } else {
     wc.innerHTML = `<h3>${ICONS.sun}Wake-up</h3><div class="row"><div class="rule-name">Missed — window closed ${esc(wr.wakeTime)}</div><span class="status-pill failed">Failed</span></div>`;
   }

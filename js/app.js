@@ -8,6 +8,7 @@ import { renderStreaks } from './ui-streaks.js';
 import { renderLogs, wireLogs } from './ui-logs.js';
 import { renderSettings, wireSettings } from './ui-settings.js';
 import { reminderTick, syncNtfy, syncCfPush } from './reminders.js';
+import { shouldShowMirror, openMirror, wireIdentitySetup } from './ui-mirror.js';
 
 /* ---------- nav & refresh ---------- */
 function show(view) {
@@ -22,6 +23,12 @@ function refresh(reSettle = true) {
   renderToday(); renderStreaks(); renderLogs(); renderSettings();
   if (pending.shame) { showShame(pending.shame); pending.shame = null; }
   else if (pending.celebration) { showCelebration(pending.celebration); pending.celebration = null; }
+  checkMirror();
+}
+function checkMirror() {
+  // defer while any overlay is up (check-in sheet, shame/celebration, setup) — re-runs on next refresh/tick
+  if (document.querySelector('.mirror-veil.open, .sheet-veil.open, .fx-veil.open')) return;
+  if (shouldShowMirror()) openMirror();
 }
 bus.refresh = refresh;
 bus.renderSettings = renderSettings;
@@ -38,6 +45,7 @@ wireToday();
 wireLogs();
 wireSettings();
 wireOverlays();
+wireIdentitySetup();
 applyEscalations();
 settle();
 refresh(false);

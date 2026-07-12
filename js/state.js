@@ -99,6 +99,7 @@ export function freshState() {
     decks: {},
     gym: [],
     meals: [],
+    mirror: {},
   };
 }
 
@@ -149,6 +150,14 @@ function normalize() {
   S.decks = S.decks || {};
   S.gym = S.gym || [];
   S.meals = S.meals || [];
+  S.mirror = S.mirror || {};
+  S.p1Migrated = S.p1Migrated || false;
+  if (!S.p1Migrated) {
+    if (!S.reminders.some(r => r.id === 'rem-mirror')) {
+      S.reminders.push({ id: 'rem-mirror', time: '08:35', text: 'Mirror. Who are you today?', repeat: 'daily' });
+    }
+    S.p1Migrated = true;
+  }
   // prune stale lastReminderFired keys older than today
   const t0 = todayKey();
   for (const k of Object.keys(S.lastReminderFired)) { if (k.split('@')[0] < t0) delete S.lastReminderFired[k]; }

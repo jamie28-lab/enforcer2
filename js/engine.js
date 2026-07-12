@@ -149,6 +149,22 @@ export function lifetimePower() {
   return n;
 }
 
+/* ---------- morning mirror ---------- */
+/* Treat a hand-imported malformed identity as "not set up" everywhere. */
+export function identityValid() {
+  const id = S.identity;
+  return !!(id && id.her && id.her.portrait && Array.isArray(id.her.traits) && id.other);
+}
+export function mirrorHerCount30() {
+  const t = todayKey();
+  let n = 0;
+  for (let i = 0; i < 30; i++) {
+    const m = S.mirror[addDays(t, -i)];
+    if (m && (m.answer === 'her' || m.answer === 'her-after-confrontation')) n++;
+  }
+  return n;
+}
+
 /* ---------- goals ---------- */
 export const weekStart = k => { const d = parseKey(k); const off = (d.getDay() + 6) % 7; d.setDate(d.getDate() - off); return dkey(d); };
 export function goalWeekProgress(g) {

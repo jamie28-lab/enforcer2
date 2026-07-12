@@ -1,7 +1,7 @@
 // ENFORCER 2.0 — STREAKS view: 30-day chart, day grid, per-rule streaks, badge wall, crowns
 'use strict';
 import { S, todayKey, addDays, parseKey, fmtDate, MILESTONES } from './state.js';
-import { activeRules, dayClean, streakEndingAt, perRuleStreak, isPowerDay, crowns, ruleName } from './engine.js';
+import { activeRules, dayClean, streakEndingAt, perRuleStreak, isPowerDay, crowns, ruleName, mirrorHerCount30, identityValid } from './engine.js';
 import { $, esc, ICONS, ruleIcon } from './ui-shared.js';
 
 export function renderStreaks() {
@@ -69,4 +69,8 @@ export function renderStreaks() {
   if (!c.weeks.length && !c.months.length) cr.innerHTML = '<div class="empty-note" style="width:100%">Perfect calendar weeks and months land here. First crown: one clean Monday-to-Sunday.</div>';
   c.months.forEach(m => cr.insertAdjacentHTML('beforeend', `<span class="crown-chip">${ICONS.crown}${parseKey(m + '-01').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}</span>`));
   c.weeks.slice(-8).forEach(w => cr.insertAdjacentHTML('beforeend', `<span class="crown-chip">${ICONS.crown}wk ${fmtDate(w)}</span>`));
+
+  // mirror stat
+  const ms = $('#mirror-stat');
+  ms.innerHTML = identityValid() ? `${ICONS.mirror} Mirror — <b>${mirrorHerCount30()}/30</b> mornings chosen` : '';
 }

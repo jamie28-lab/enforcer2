@@ -1,11 +1,25 @@
 // ENFORCER 2.0 — SETTINGS view: rules, habits, goals, holidays, reminders, push, phrases, export
 'use strict';
 import { S, save, todayKey, addDays, fmtDate, hm, now, DEFAULT_PHRASES } from './state.js';
-import { wakeRule, goalStatus, ruleName, pending } from './engine.js';
+import { wakeRule, goalStatus, ruleName, pending, identityValid } from './engine.js';
 import { $, esc, toast, ICONS, ruleIcon, bus } from './ui-shared.js';
 import { requestNotifPermission, randTopic, syncNtfy, syncCfPush, enableCfPush, disableCfPush } from './reminders.js';
+import { openIdentitySetup } from './ui-mirror.js';
 
 export function renderSettings() {
+  const si = $('#set-identity');
+  if (!identityValid()) {
+    si.innerHTML = `<div class="empty-note">Not set up yet. Two portraits: who you're becoming, who you refuse to be.</div><button class="btn ghost small" id="identity-edit-btn" style="margin-top:10px">Set up identity</button>`;
+  } else {
+    const idn = S.identity;
+    si.innerHTML = `
+      <div class="identity-row"><div class="identity-lbl">${esc(idn.her.name)}</div><div class="identity-portrait">${esc(idn.her.portrait)}</div></div>
+      <div class="identity-row"><div class="identity-lbl">${esc(idn.other.name)}</div><div class="identity-portrait">${esc(idn.other.portrait)}</div></div>
+      <div class="identity-traits">${idn.her.traits.map(tr => `<span class="trait-tag">${esc(tr.label)}</span>`).join('')}</div>
+      <button class="btn ghost small" id="identity-edit-btn" style="margin-top:10px">Edit identity</button>`;
+  }
+  $('#identity-edit-btn').onclick = () => openIdentitySetup();
+
   const sr = $('#set-rules'); sr.innerHTML = '';
   for (const r of S.rules.filter(r => !r.removedOn)) {
     let right = '';

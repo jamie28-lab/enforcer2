@@ -360,3 +360,45 @@ nav button.on svg { filter: drop-shadow(0 0 8px var(--violet-glow)); }
 .section-title { font-size:15px; font-weight:800; letter-spacing:-0.2px; margin: 20px 2px 12px; display:flex; align-items:center; justify-content:space-between; }
 .mini-link { font-size:12px; font-weight:700; color:var(--violet-hi); background:none; border:none; cursor:pointer; font-family:var(--font); padding:8px; min-height:44px; display:inline-flex; align-items:center; }
 .mini-link.danger { color: var(--red); }
+
+/* ---------- identity (P1) ---------- */
+.identity-row { margin-bottom:14px; }
+.identity-lbl { font-size:11px; font-weight:800; letter-spacing:1px; color:var(--violet-hi); text-transform:uppercase; margin-bottom:4px; }
+.identity-portrait { font-family:var(--display); font-style:italic; font-size:14.5px; color:var(--text); line-height:1.55; }
+.identity-traits { margin-top:2px; }
+.trait-tag { display:inline-block; font-size:11.5px; font-weight:700; color:var(--violet-soft); background:rgba(109,40,217,0.1); border:1px solid rgba(167,139,250,0.22); border-radius:99px; padding:5px 11px; margin:0 6px 6px 0; }
+.trait-chip { display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:700; color:var(--violet-soft);
+  background:rgba(109,40,217,0.12); border:1px solid rgba(167,139,250,0.28); border-radius:99px; padding:7px 8px 7px 13px; margin:0 6px 6px 0; }
+.trait-del { display:inline-flex; align-items:center; justify-content:center; background:none; border:none; cursor:pointer; color:var(--violet-soft); padding:2px; }
+.trait-input-row { display:flex; gap:8px; align-items:center; margin-top:4px; }
+.trait-input-row .field { flex:1; margin-bottom:0; }
+
+/* ---------- morning mirror (P1) — a held breath: violet only, no gold ---------- */
+.mirror-stat { font-size:12.5px; font-weight:700; color:var(--violet-hi); margin-top:12px; display:flex; align-items:center; gap:6px; }
+.mirror-stat svg { width:14px; height:14px; stroke:var(--violet-hi); }
+.mirror-stat b { color:var(--text); }
+
+.mirror-veil { position:fixed; inset:0; z-index:250; display:none; overflow-y:auto; -webkit-overflow-scrolling:touch;
+  background: radial-gradient(700px 560px at 50% 18%, rgba(109,40,217,0.16), transparent 70%), var(--bg-deep); }
+.mirror-veil.open { display:block; animation: mirrorIn 1s ease-out; }
+@keyframes mirrorIn { from { opacity:0; } to { opacity:1; } }
+.mirror-inner { max-width:480px; margin:0 auto; min-height:100dvh; display:flex; flex-direction:column;
+  padding: calc(44px + env(safe-area-inset-top)) 28px calc(48px + env(safe-area-inset-bottom)); }
+.mirror-wake-btn { padding:13px; font-size:14px; min-height:46px; margin-bottom:26px; width:100%; }
+.mirror-date { font-size:12px; font-weight:600; color:var(--muted); text-align:center; }
+.mirror-kicker { font-size:11px; font-weight:800; letter-spacing:4px; color:var(--violet-hi); text-transform:uppercase; text-align:center; margin:6px 0 34px; }
+.mirror-section { margin-bottom:20px; }
+.mirror-section-lbl { font-size:10.5px; font-weight:700; letter-spacing:1px; color:var(--dim); text-transform:uppercase; margin-bottom:7px; }
+.mirror-rule, .mirror-goal, .mirror-habit { font-size:13.5px; color:var(--muted); padding:3px 0; }
+.mirror-goal.behind { color:var(--violet-soft); }
+.mirror-portrait { font-family:var(--display); font-style:italic; font-size:23px; font-weight:500; line-height:1.6; color:var(--text); text-align:center; margin:34px 0 40px; }
+.mirror-portrait.confront { color:var(--violet-soft); margin-top:10px; }
+.mirror-bottom { margin-top:auto; }
+.mirror-question { font-family:var(--display); font-size:27px; font-weight:600; letter-spacing:-0.3px; text-align:center; margin-bottom:22px; }
+.mirror-choices { display:flex; flex-direction:column; gap:12px; }
+.mirror-choices.confront { gap:16px; align-items:center; }
+.mirror-choices.confront .btn:first-child { width:100%; }
+.mirror-confront-line { font-size:16px; font-weight:600; line-height:1.65; color:var(--text); text-align:center; margin-bottom:26px; }
+.mirror-flat-btn { opacity:0.5; font-size:12px; box-shadow:none; }
+.mirror-affirm-wrap { margin:auto 0; text-align:center; }
+.mirror-affirm-line { font-family:var(--display); font-style:italic; font-size:19px; color:var(--violet-soft); margin-top:6px; }
