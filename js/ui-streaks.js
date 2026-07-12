@@ -112,6 +112,15 @@ export function renderStreaks() {
     }
   }
 
+  // quiz stat (P7) — lifetime counts derived from S.quizLog
+  const qs = $('#quiz-stat');
+  if (!S.quizLog.length) qs.innerHTML = '';
+  else {
+    const right = S.quizLog.filter(l => l.right).length;
+    const acc = Math.round(100 * right / S.quizLog.length);
+    qs.innerHTML = `${ICONS.check} Quiz — <b>${S.quizLog.length}</b> answered · <b>${acc}%</b> right`;
+  }
+
   // recall stats (P6)
   const rsc = $('#recall-stats-card');
   const ret = retention30(t);

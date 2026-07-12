@@ -97,6 +97,12 @@
     <div id="recall-summary"></div>
     <button class="btn ghost small" id="recall-study-btn" style="margin-top:12px">Study</button>
   </div>
+
+  <div class="card" id="quiz-card">
+    <h3><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Daily Quiz</h3>
+    <div id="quiz-summary"></div>
+    <button class="btn ghost small" id="quiz-start-btn" style="margin-top:12px">Start</button>
+  </div>
 </main>
 
 <!-- ============ STREAKS ============ -->
@@ -116,6 +122,7 @@
     <div class="chart-legend" style="padding-top:10px"><span><i style="background:linear-gradient(150deg,#fbbf24,#b45309)"></i>Power Day — clean + all bonus habits</span></div>
     <div class="mirror-stat" id="mirror-stat"></div>
     <div class="mirror-stat" id="recovery-stat"></div>
+    <div class="mirror-stat" id="quiz-stat"></div>
     <div class="compound-stat" id="compound-stat"></div>
   </div>
 
@@ -266,6 +273,10 @@
     <div id="srs-deck-stats" style="margin-top:10px"></div>
     <div style="height:8px"></div>
     <button class="btn ghost small" id="srs-export-btn">Export cards</button>
+    <div style="height:14px"></div>
+    <div class="field"><label>STEM quiz questions per day</label><input type="number" id="quiz-per-day" min="1" max="20"></div>
+    <button class="mini-link danger" id="quiz-reset-btn">Reset quiz history</button>
+    <div class="hint">Clears served-question tracking and today's in-progress quiz. Cards already drafted from wrong answers are kept.</div>
   </div>
 
   <div class="card">
@@ -311,6 +322,24 @@
       <button class="grade-btn hard" data-g="2"><span class="grade-lbl">Hard</span><span class="grade-int" id="gi-2"></span></button>
       <button class="grade-btn good" data-g="3"><span class="grade-lbl">Good</span><span class="grade-int" id="gi-3"></span></button>
       <button class="grade-btn easy" data-g="4"><span class="grade-lbl">Easy</span><span class="grade-int" id="gi-4"></span></button>
+    </div>
+  </div>
+</div>
+
+<!-- daily quiz sheet -->
+<div class="sheet-veil" id="quiz-veil">
+  <div class="sheet">
+    <div class="sheet-grip"></div>
+    <div class="row" style="margin-bottom:6px"><h2 style="margin-bottom:0">Daily Quiz</h2><button class="mini-link" id="quiz-close" aria-label="Close">Close</button></div>
+    <div class="study-progress" id="quiz-progress"></div>
+    <div class="study-card" id="quiz-card-face">
+      <div class="study-face" id="quiz-front"></div>
+      <div class="study-face study-back" id="quiz-back" style="display:none"></div>
+    </div>
+    <button class="btn" id="quiz-show" style="margin-top:16px">Show answer</button>
+    <div class="row" id="quiz-grades" style="display:none; gap:10px; margin-top:16px">
+      <button class="btn ghost" id="quiz-wrong" style="flex:1">I was wrong</button>
+      <button class="btn" id="quiz-right" style="flex:1">I was right</button>
     </div>
   </div>
 </div>

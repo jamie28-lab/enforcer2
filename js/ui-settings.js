@@ -171,6 +171,7 @@ export function renderSettings() {
 
   // recall (P6) settings
   $('#srs-new-per-day').value = S.srsSettings.newPerDay;
+  $('#quiz-per-day').value = S.quizPerDay;
   const dsM = deckStats('mistakes'), dsS = deckStats('stem');
   $('#srs-deck-stats').innerHTML = `
     <div class="rule-meta">Mistakes — ${dsM.new} new · ${dsM.learning} learning · ${dsM.review} review · ${dsM.suspended} suspended</div>
@@ -314,6 +315,16 @@ export function wireSettings() {
     let v = Math.round(parseFloat(e.target.value)) || 5;
     v = Math.max(1, Math.min(20, v));
     e.target.value = v; S.srsSettings.newPerDay = v; save(); bus.refresh();
+  };
+  $('#quiz-per-day').onchange = e => {
+    let v = Math.round(parseFloat(e.target.value)) || 5;
+    v = Math.max(1, Math.min(20, v));
+    e.target.value = v; S.quizPerDay = v; save(); bus.refresh();
+  };
+  $('#quiz-reset-btn').onclick = () => {
+    if (!confirm('Reset quiz history? This clears served-question tracking and today\'s in-progress quiz. Cards already drafted from wrong answers are kept.')) return;
+    S.quizServed = {}; S.quizToday = null; save(); bus.refresh();
+    toast('Quiz history reset.');
   };
   $('#srs-export-btn').onclick = async () => {
     const cards = [...S.decks.mistakes.cards, ...S.decks.stem.cards];

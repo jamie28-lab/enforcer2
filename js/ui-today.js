@@ -5,11 +5,12 @@ import {
   activeRules, wakeRule, isHoliday, day, ensureDay, ruleOutcome, dayClean, currentStreak,
   streakEndingAt, perRuleStreak, bestStreakEver, lifetimeClean, activeHabits, isPowerDay,
   lifetimePower, goalStatus, ruleName, pick, stageFor, settle, pending, identityValid,
-  voteBalance, lifetimeHabitDone, isComebackDay,
+  voteBalance, lifetimeHabitDone, isComebackDay, quizStreak,
 } from './engine.js';
 import { $, esc, toast, ICONS, ruleIcon, bus, setNumber, showShame, showCelebration } from './ui-shared.js';
 import { requestNotifPermission } from './reminders.js';
 import { dueCards, rate, computeNext, draftMistakeCard } from './srs.js';
+import { loadBank, selectDailyQuestions, markServed, draftQuizCard, logQuizAnswer } from './quiz.js';
 
 function renderNotifBanner() {
   const nb = $('#notif-banner');
@@ -188,6 +189,7 @@ export function renderToday() {
   }
 
   renderRecall();
+  renderQuizCard();
 }
 
 /* ---------- Recall (P6 — FSRS spaced repetition) ---------- */
@@ -262,6 +264,88 @@ function gradeStudyCard(grade) {
     toast(stillDue === 0 ? 'Recall session done.' : `Pass done — ${stillDue} card${stillDue === 1 ? '' : 's'} still due today.`);
   } else {
     paintStudyCard();
+  }
+}
+
+/* ---------- P7: STEM quiz ---------- */
+let quizBank = null;   // lazy-loaded once per session via loadBank(), cached here too
+
+function renderQuizCard() {
+  const t = todayKey();
+  const n = S.quizPerDay || 5;
+  const qt = (S.quizToday && S.quizToday.date === t) ? S.quizToday : null;
+  const answered = qt ? qt.idx : 0;
+  const streak = quizStreak();
+  $('#quiz-summary').innerHTML = `<div class="recall-summary-line">${answered}/${n} today</div>${streak > 0 ? `<div class="recall-deck-split">quiz streak ${streak}</div>` : ''}`;
+  const done = !!S.quizDone[t];
+  $('#quiz-start-btn').textContent = done ? 'Done for today' : (qt ? 'Continue' : 'Start');
+  $('#quiz-start-btn').disabled = done;
+}
+
+function currentQuizQuestion() {
+  const qt = S.quizToday;
+  if (!qt || !quizBank) return null;
+  return quizBank.find(q => q.id === qt.qids[qt.idx]) || null;
+}
+function paintQuizQuestion() {
+  const qt = S.quizToday;
+  const q = currentQuizQuestion();
+  $('#quiz-progress').textContent = `${qt.idx + 1}/${qt.qids.length}`;
+  $('#quiz-front').textContent = q ? q.q : '';
+  $('#quiz-back').style.display = 'none';
+  $('#quiz-back').textContent = '';
+  $('#quiz-show').style.display = '';
+  $('#quiz-grades').style.display = 'none';
+}
+async function openQuiz() {
+  const t = todayKey();
+  if (S.quizDone[t]) return;
+  if (!quizBank) {
+    quizBank = await loadBank();
+    if (!quizBank) { toast('Quiz needs one online load first.'); return; }
+  }
+  let qt = (S.quizToday && S.quizToday.date === t) ? S.quizToday : null;
+  if (!qt) {
+    const n = S.quizPerDay || 5;
+    const ids = selectDailyQuestions(quizBank, n);
+    ids.forEach(markServed);
+    qt = { date: t, qids: ids, idx: 0, right: 0, wrong: [] };
+    S.quizToday = qt;
+    save();
+  }
+  $('#quiz-veil').classList.add('open');
+  paintQuizQuestion();
+}
+function closeQuiz() {
+  $('#quiz-veil').classList.remove('open');
+  renderQuizCard();
+}
+function showQuizAnswer() {
+  const q = currentQuizQuestion();
+  if (!q) return;
+  $('#quiz-back').style.display = '';
+  $('#quiz-back').textContent = q.a + '\n\n' + q.why;
+  $('#quiz-show').style.display = 'none';
+  $('#quiz-grades').style.display = '';
+}
+function gradeQuiz(right) {
+  const t = todayKey();
+  const qt = S.quizToday;
+  const q = currentQuizQuestion();
+  if (!qt || !q) return;
+  logQuizAnswer(q.id, right);
+  if (right) qt.right = (qt.right || 0) + 1;
+  else { qt.wrong = qt.wrong || []; qt.wrong.push(q.id); draftQuizCard(q); }
+  qt.idx++;
+  if (qt.idx >= qt.qids.length) {
+    S.quizDone[t] = true;
+    save();
+    closeQuiz();
+    bus.refresh();
+    toast(`Quiz done — ${qt.right}/${qt.qids.length} right today.`);
+  } else {
+    save();
+    paintQuizQuestion();
   }
 }
 
@@ -352,4 +436,9 @@ export function wireToday() {
   $('#study-close').onclick = closeStudy;
   $('#study-show').onclick = showStudyAnswer;
   $('#study-grades').querySelectorAll('[data-g]').forEach(b => b.onclick = () => gradeStudyCard(+b.dataset.g));
+  $('#quiz-start-btn').onclick = openQuiz;
+  $('#quiz-close').onclick = closeQuiz;
+  $('#quiz-show').onclick = showQuizAnswer;
+  $('#quiz-wrong').onclick = () => gradeQuiz(false);
+  $('#quiz-right').onclick = () => gradeQuiz(true);
 }

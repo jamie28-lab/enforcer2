@@ -163,6 +163,13 @@ function normalize() {
     S.p1Migrated = true;
   }
   S.mirrorStudyDone = S.mirrorStudyDone || {};
+  // ---- P7: STEM quiz ----
+  S.quizServed = S.quizServed || {};      // {qid:true} — ids already shown, cleared+reshuffled when bank exhausted
+  S.quizToday = S.quizToday || null;      // {date, qids:[...], idx, right, wrong:[qids]} — resumable session for today
+  S.quizDone = S.quizDone || {};          // 'YYYY-MM-DD' -> true, day's N questions completed (drives votesOnDay + streak)
+  S.quizLog = S.quizLog || [];            // {date, qid, right} — capped at 1000 newest, same eviction as srsLog
+  if (!('quizSeed' in S)) S.quizSeed = null;   // rolled once via crypto.getRandomValues, then deterministic forever
+  S.quizPerDay = S.quizPerDay || 5;
   // prune stale lastReminderFired keys older than today
   const t0 = todayKey();
   for (const k of Object.keys(S.lastReminderFired)) { if (k.split('@')[0] < t0) delete S.lastReminderFired[k]; }

@@ -227,6 +227,9 @@ export function votesOnDay(k) {
   // HER: +1 if every due Recall card was studied that day — S.srsDone is canonical
   // data written by the study screen, same tier as S.days/S.mirror (not re-derived here).
   if (S.srsDone && S.srsDone[k]) her++;
+  // HER: +1 if the day's STEM quiz (S.quizPerDay questions) was completed — S.quizDone is
+  // canonical data written by the quiz overlay, same tier as S.srsDone above.
+  if (S.quizDone && S.quizDone[k]) her++;
 
   // OTHER: +1 per rule (or escalated goal) broken that day — one S.mistakes entry each
   other += mistakesCountByDate(k);
@@ -289,6 +292,17 @@ export function voteTrajectory(nDays = 60) {
 export function lifetimeHabitDone(h) {
   let n = 0, cur = h.addedOn; const t = todayKey();
   while (cur <= t) { if ((day(cur).habitsDone || {})[h.id]) n++; cur = addDays(cur, 1); }
+  return n;
+}
+
+/* ---------- P7: STEM quiz ---------- */
+/* consecutive days with quizDone, ending today or yesterday (today undecided doesn't break the chain) */
+export function quizStreak() {
+  const t = todayKey();
+  const start = S.quizDone[t] ? t : (S.quizDone[addDays(t, -1)] ? addDays(t, -1) : null);
+  if (!start) return 0;
+  let n = 0, cur = start;
+  while (S.quizDone[cur]) { n++; cur = addDays(cur, -1); }
   return n;
 }
 

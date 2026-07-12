@@ -61,6 +61,7 @@ function paintMirror() {
       ${goalsHtml ? `<div class="mirror-section"><div class="mirror-section-lbl">Goals</div>${goalsHtml}</div>` : ''}
       ${habitsHtml ? `<div class="mirror-section"><div class="mirror-section-lbl">Today's small votes</div>${habitsHtml}</div>` : ''}
       ${dueN > 0 ? `<div class="mirror-recall-line">${dueN} card${dueN === 1 ? '' : 's'} waiting. Study is a vote.</div>` : ''}
+      ${!S.quizDone[t] ? `<div class="mirror-recall-line">Daily quiz waiting — ${S.quizPerDay || 5} questions.</div>` : ''}
       <div class="mirror-portrait">${esc(id.her.portrait)}</div>
       <div class="mirror-bottom">
         <div class="mirror-question">Who are you today?</div>
