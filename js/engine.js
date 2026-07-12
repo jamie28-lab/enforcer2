@@ -3,6 +3,7 @@
 import {
   S, save, todayKey, addDays, parseKey, dkey, dayDiff, hm, now, MILESTONES, STAGES, DEFAULT_PHRASES,
 } from './state.js';
+import { draftMistakeCard } from './srs.js';
 
 /* ---------- core queries ---------- */
 export const activeRules = k => S.rules.filter(r => r.addedOn <= k && (!r.removedOn || r.removedOn > k));
@@ -194,6 +195,9 @@ export function votesOnDay(k) {
   if (m && (m.answer === 'her' || m.answer === 'her-after-confrontation')) her++;
   // HER: +1 per enforced goal actually attested done that day (real d.goalDone record only)
   for (const g of S.goals) if (g.enforce && (d.goalDone || {})[g.id] > 0) her++;
+  // HER: +1 if every due Recall card was studied that day — S.srsDone is canonical
+  // data written by the study screen, same tier as S.days/S.mirror (not re-derived here).
+  if (S.srsDone && S.srsDone[k]) her++;
 
   // OTHER: +1 per rule (or escalated goal) broken that day — one S.mistakes entry each
   other += mistakesCountByDate(k);
@@ -320,6 +324,7 @@ export function settle() {
           if (ruleOutcome(r, cur, true) === false && !S.mistakes.some(m => m.date === cur && m.ruleId === r.id)) {
             const lost = streakEndingAt(addDays(cur, -1));
             S.mistakes.unshift({ date: cur, ruleId: r.id, ruleName: ruleName(r), lost, note: '' });
+            draftMistakeCard(S.mistakes[0]);
             pending.shame = pending.shame || { lost, rule: ruleName(r), date: cur };
           }
         }
@@ -327,6 +332,7 @@ export function settle() {
           if (goalOutcomeOnDay(g, cur, true) === false && !S.mistakes.some(m => m.date === cur && m.ruleId === 'goal-' + g.id)) {
             const lost = streakEndingAt(addDays(cur, -1));
             S.mistakes.unshift({ date: cur, ruleId: 'goal-' + g.id, ruleName: `Goal: ${g.name}`, lost, note: '' });
+            draftMistakeCard(S.mistakes[0]);
             pending.shame = pending.shame || { lost, rule: `Goal: ${g.name}`, date: cur };
           }
         }
@@ -341,6 +347,7 @@ export function settle() {
   if (!isHoliday(t) && activeRules(t).some(r => r.kind === 'wake') && !td.wake && hm(now()) > wr.wakeTime && !S.mistakes.some(m => m.date === t && m.ruleId === wr.id)) {
     const lost = streakEndingAt(addDays(t, -1));
     S.mistakes.unshift({ date: t, ruleId: wr.id, ruleName: ruleName(wr), lost, note: '' });
+    draftMistakeCard(S.mistakes[0]);
     pending.shame = pending.shame || { lost, rule: ruleName(wr), date: t };
   }
   // execute pending rule removals past their cooldown

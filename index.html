@@ -86,6 +86,12 @@
     <div class="habit-chips" id="habit-chips"></div>
     <div id="power-line"></div>
   </div>
+
+  <div class="card" id="recall-card" style="display:none">
+    <h3><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>Recall</h3>
+    <div id="recall-summary"></div>
+    <button class="btn ghost small" id="recall-study-btn" style="margin-top:12px">Study</button>
+  </div>
 </main>
 
 <!-- ============ STREAKS ============ -->
@@ -105,6 +111,12 @@
     <div class="chart-legend" style="padding-top:10px"><span><i style="background:linear-gradient(150deg,#fbbf24,#b45309)"></i>Power Day — clean + all bonus habits</span></div>
     <div class="mirror-stat" id="mirror-stat"></div>
     <div class="compound-stat" id="compound-stat"></div>
+  </div>
+
+  <div class="card" id="recall-stats-card" style="display:none">
+    <h3><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>Recall</h3>
+    <div id="recall-retention-line"></div>
+    <div class="forecast-bar" id="recall-forecast"></div>
   </div>
 
   <div class="card" id="trajectory-card" style="display:none">
@@ -231,6 +243,14 @@
     <div id="phrase-editors"></div>
   </div>
 
+  <div class="card"><h3><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>Recall</h3>
+    <div class="field"><label>New cards per day</label><input type="number" id="srs-new-per-day" min="1" max="20"></div>
+    <div class="hint">Requested retention: fixed at <b class="hi-text">90%</b>.</div>
+    <div id="srs-deck-stats" style="margin-top:10px"></div>
+    <div style="height:8px"></div>
+    <button class="btn ghost small" id="srs-export-btn">Export cards</button>
+  </div>
+
   <div class="card">
     <button class="btn ghost small" id="export-btn">Export data (JSON)</button>
     <div class="hint" style="margin-top:8px">Everything is stored on this device. Export before clearing browser data.</div>
@@ -254,6 +274,55 @@
     <div id="checkin-items"></div>
     <button class="btn" id="checkin-submit" style="margin-top:18px">Confirm check-in</button>
     <button class="btn ghost" id="checkin-cancel" style="margin-top:10px">Not yet</button>
+  </div>
+</div>
+
+<!-- study sheet -->
+<div class="sheet-veil" id="study-veil">
+  <div class="sheet">
+    <div class="sheet-grip"></div>
+    <div class="row" style="margin-bottom:6px"><h2 style="margin-bottom:0">Study</h2><button class="mini-link" id="study-close" aria-label="Close">Close</button></div>
+    <div class="study-progress" id="study-progress"></div>
+    <div class="study-card" id="study-card">
+      <div class="study-face" id="study-front"></div>
+      <div class="study-face study-back" id="study-back" style="display:none"></div>
+    </div>
+    <button class="btn" id="study-show" style="margin-top:16px">Show answer</button>
+    <div class="grade-row" id="study-grades" style="display:none">
+      <button class="grade-btn again" data-g="1"><span class="grade-lbl">Again</span><span class="grade-int" id="gi-1"></span></button>
+      <button class="grade-btn hard" data-g="2"><span class="grade-lbl">Hard</span><span class="grade-int" id="gi-2"></span></button>
+      <button class="grade-btn good" data-g="3"><span class="grade-lbl">Good</span><span class="grade-int" id="gi-3"></span></button>
+      <button class="grade-btn easy" data-g="4"><span class="grade-lbl">Easy</span><span class="grade-int" id="gi-4"></span></button>
+    </div>
+  </div>
+</div>
+
+<!-- recall card edit sheet -->
+<div class="sheet-veil" id="card-edit-veil">
+  <div class="sheet">
+    <div class="sheet-grip"></div>
+    <h2>Edit card</h2>
+    <div class="sheet-sub">This card was drafted from a mistake-log entry. Editing it doesn't touch the log — and editing the log later won't touch this card.</div>
+    <div class="field"><label>Front</label><textarea id="card-edit-front" maxlength="300"></textarea></div>
+    <div class="field"><label>Back</label><textarea id="card-edit-back" maxlength="600"></textarea></div>
+    <label class="row" style="justify-content:flex-start; gap:10px; margin-bottom:14px; cursor:pointer">
+      <input type="checkbox" id="card-edit-suspend">
+      <span style="font-size:13.5px; font-weight:600">Suspended (excluded from study)</span>
+    </label>
+    <button class="btn" id="card-edit-save">Save</button>
+    <button class="btn ghost" id="card-edit-delete" style="margin-top:10px">Delete card</button>
+    <button class="btn ghost" id="card-edit-cancel" style="margin-top:10px">Cancel</button>
+  </div>
+</div>
+
+<!-- export cards fallback sheet -->
+<div class="sheet-veil" id="export-cards-veil">
+  <div class="sheet">
+    <div class="sheet-grip"></div>
+    <h2>Export cards</h2>
+    <div class="sheet-sub">Clipboard access wasn't available — copy manually below.</div>
+    <div class="field"><textarea id="export-cards-text" readonly style="min-height:220px"></textarea></div>
+    <button class="btn" id="export-cards-close">Done</button>
   </div>
 </div>
 

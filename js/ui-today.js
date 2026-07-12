@@ -1,6 +1,6 @@
 // ENFORCER 2.0 — TODAY view: hero, wake card, rules, check-in, bonus habits, goals
 'use strict';
-import { S, save, todayKey, parseKey, addDays, hm, now, fmtDate, MILESTONES } from './state.js';
+import { S, save, todayKey, parseKey, addDays, dayDiff, hm, now, fmtDate, MILESTONES } from './state.js';
 import {
   activeRules, wakeRule, isHoliday, day, ensureDay, ruleOutcome, dayClean, currentStreak,
   streakEndingAt, perRuleStreak, bestStreakEver, lifetimeClean, activeHabits, isPowerDay,
@@ -9,6 +9,7 @@ import {
 } from './engine.js';
 import { $, esc, toast, ICONS, ruleIcon, bus, setNumber, showShame, showCelebration } from './ui-shared.js';
 import { requestNotifPermission } from './reminders.js';
+import { dueCards, rate, computeNext, draftMistakeCard } from './srs.js';
 
 function renderNotifBanner() {
   const nb = $('#notif-banner');
@@ -182,6 +183,74 @@ export function renderToday() {
         </div>`);
     }
   }
+
+  renderRecall();
+}
+
+/* ---------- Recall (P6 — FSRS spaced repetition) ---------- */
+function renderRecall() {
+  const t = todayKey();
+  const rc = $('#recall-card');
+  const due = dueCards(null, t);
+  if (!due.length) { rc.style.display = 'none'; return; }
+  rc.style.display = '';
+  const byDeck = {};
+  for (const c of due) byDeck[c.deck] = (byDeck[c.deck] || 0) + 1;
+  const split = Object.entries(byDeck).map(([k, n]) => `${n} ${S.decks[k] ? S.decks[k].name : k}`).join(', ');
+  $('#recall-summary').innerHTML = `<div class="recall-summary-line">${due.length} card${due.length === 1 ? '' : 's'} due</div><div class="recall-deck-split">${esc(split)}</div>`;
+}
+
+let studySession = null;   // { cards:[...], idx:0 }
+function intervalLabel(due, todayK) {
+  return due === todayK ? 'today' : `${dayDiff(todayK, due)}d`;
+}
+function paintStudyCard() {
+  const { cards, idx } = studySession;
+  const card = cards[idx];
+  $('#study-progress').textContent = `${idx + 1}/${cards.length}`;
+  $('#study-front').textContent = card.front;
+  $('#study-back').style.display = 'none';
+  $('#study-back').textContent = card.back;
+  $('#study-show').style.display = '';
+  $('#study-grades').style.display = 'none';
+}
+function openStudy() {
+  const t = todayKey();
+  const due = dueCards(null, t);
+  if (!due.length) { toast('Nothing due right now.'); return; }
+  studySession = { cards: due, idx: 0 };
+  $('#study-veil').classList.add('open');
+  paintStudyCard();
+}
+function closeStudy() {
+  $('#study-veil').classList.remove('open');
+  studySession = null;
+}
+function showStudyAnswer() {
+  const t = todayKey();
+  const card = studySession.cards[studySession.idx];
+  $('#study-back').style.display = '';
+  $('#study-show').style.display = 'none';
+  const grades = $('#study-grades'); grades.style.display = '';
+  for (const g of [1, 2, 3, 4]) {
+    const preview = computeNext(card, g, t);
+    $('#gi-' + g).textContent = intervalLabel(preview.due, t);
+  }
+}
+function gradeStudyCard(grade) {
+  const t = todayKey();
+  const card = studySession.cards[studySession.idx];
+  rate(card, grade, t);
+  save();
+  studySession.idx++;
+  if (studySession.idx >= studySession.cards.length) {
+    if (dueCards(null, t).length === 0) { S.srsDone[t] = true; save(); }
+    closeStudy();
+    bus.refresh();
+    toast('Recall session done.');
+  } else {
+    paintStudyCard();
+  }
 }
 
 /* ---------- check-in sheet ---------- */
@@ -231,12 +300,14 @@ export function submitCheckin() {
   const broken = rules.filter(r => d.answers[r.id] === false);
   for (const r of broken) if (!S.mistakes.some(m => m.date === t && m.ruleId === r.id)) {
     S.mistakes.unshift({ date: t, ruleId: r.id, ruleName: ruleName(r), lost: prevStreak, note: '' });
+    draftMistakeCard(S.mistakes[0]);
   }
   // escalated goal answered 0 today -> no more input possible, treat as break now
   for (const gid of (d.escalated || [])) {
     const g = S.goals.find(x => x.id === gid);
     if (g && ((d.goalDone || {})[gid] || 0) <= 0 && !S.mistakes.some(m => m.date === t && m.ruleId === 'goal-' + gid)) {
       S.mistakes.unshift({ date: t, ruleId: 'goal-' + gid, ruleName: 'Goal: ' + g.name, lost: prevStreak, note: '' });
+      draftMistakeCard(S.mistakes[0]);
       broken.push({ id: 'goal-' + gid });
     }
   }
@@ -256,4 +327,8 @@ export function wireToday() {
   $('#checkin-btn').onclick = openCheckin;
   $('#checkin-submit').onclick = submitCheckin;
   $('#checkin-cancel').onclick = () => $('#checkin-veil').classList.remove('open');
+  $('#recall-study-btn').onclick = openStudy;
+  $('#study-close').onclick = closeStudy;
+  $('#study-show').onclick = showStudyAnswer;
+  $('#study-grades').querySelectorAll('[data-g]').forEach(b => b.onclick = () => gradeStudyCard(+b.dataset.g));
 }

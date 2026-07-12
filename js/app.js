@@ -2,6 +2,7 @@
 'use strict';
 import { load, setRefreshHook, installDebugHook } from './state.js';
 import { applyEscalations, settle, pending } from './engine.js';
+import { normalizeSrs } from './srs.js';
 import { $, bus, toast, wireOverlays, showShame, showCelebration } from './ui-shared.js';
 import { renderToday, wireToday } from './ui-today.js';
 import { renderStreaks } from './ui-streaks.js';
@@ -39,6 +40,7 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js').catch(e => console.warn('SW registration failed', e));
 }
 const imported = load();
+normalizeSrs();
 installDebugHook();
 document.querySelectorAll('nav button').forEach(b => b.onclick = () => show(b.dataset.view));
 wireToday();

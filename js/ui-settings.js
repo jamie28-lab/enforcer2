@@ -5,6 +5,7 @@ import { wakeRule, goalStatus, ruleName, pending, identityValid, traitVotes30 } 
 import { $, esc, toast, ICONS, ruleIcon, bus } from './ui-shared.js';
 import { requestNotifPermission, randTopic, syncNtfy, syncCfPush, enableCfPush, disableCfPush } from './reminders.js';
 import { openIdentitySetup } from './ui-mirror.js';
+import { deckStats } from './srs.js';
 
 /* optional trait tagging (P2) — dropdown markup shared by rule/habit/goal creation flows */
 function traitOptionsHtml() {
@@ -163,6 +164,13 @@ export function renderSettings() {
       ? '<div class="hint" style="margin-top:10px;color:var(--ember)">Push was on in Enforcer 1.0 — this new app needs its own subscription. Toggle on to restore lock-screen reminders.</div>'
       : '');
 
+  // recall (P6) settings
+  $('#srs-new-per-day').value = S.srsSettings.newPerDay;
+  const dsM = deckStats('mistakes'), dsS = deckStats('stem');
+  $('#srs-deck-stats').innerHTML = `
+    <div class="rule-meta">Mistakes — ${dsM.new} new · ${dsM.learning} learning · ${dsM.review} review · ${dsM.suspended} suspended</div>
+    <div class="rule-meta">STEM Gaps — ${dsS.new} new · ${dsS.learning} learning · ${dsS.review} review · ${dsS.suspended} suspended</div>`;
+
   // phrase editors
   const pe = $('#phrase-editors'); pe.innerHTML = '';
   const POOL_LABELS = { morning: 'Morning motivation', milestone: 'Milestone celebration', shame: 'After a break (shame)', comeback: 'Comeback (day 1-3)' };
@@ -292,4 +300,23 @@ export function wireSettings() {
     a.href = URL.createObjectURL(new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' }));
     a.download = 'enforcer-export-' + todayKey() + '.json'; a.click();
   };
+  $('#srs-new-per-day').onchange = e => {
+    let v = Math.round(parseFloat(e.target.value)) || 5;
+    v = Math.max(1, Math.min(20, v));
+    e.target.value = v; S.srsSettings.newPerDay = v; save(); bus.refresh();
+  };
+  $('#srs-export-btn').onclick = async () => {
+    const cards = [...S.decks.mistakes.cards, ...S.decks.stem.cards];
+    const text = cards.map(c => `Q: ${c.front}\nA: ${c.back}`).join('\n\n');
+    if (!text) { toast('No cards to export yet.'); return; }
+    try {
+      await navigator.clipboard.writeText(text);
+      toast('Cards copied to clipboard.');
+    } catch {
+      $('#export-cards-text').value = text;
+      $('#export-cards-veil').classList.add('open');
+      $('#export-cards-text').select();
+    }
+  };
+  $('#export-cards-close').onclick = () => $('#export-cards-veil').classList.remove('open');
 }

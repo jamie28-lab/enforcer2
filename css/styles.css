@@ -422,3 +422,30 @@ nav button.on svg { filter: drop-shadow(0 0 8px var(--violet-glow)); }
 .mirror-flat-btn { opacity:0.5; font-size:12px; box-shadow:none; }
 .mirror-affirm-wrap { margin:auto 0; text-align:center; }
 .mirror-affirm-line { font-family:var(--display); font-style:italic; font-size:19px; color:var(--violet-soft); margin-top:6px; }
+
+/* ---------- Recall / FSRS study (P6) ---------- */
+.recall-summary-line { font-size:13.5px; color:var(--text); font-weight:600; }
+.recall-deck-split { font-size:11.5px; color:var(--muted); margin-top:3px; }
+.mirror-recall-line { font-size:12.5px; font-weight:600; color:var(--violet-soft); margin: -6px 0 20px; text-align:center; }
+.study-progress { font-size:11.5px; font-weight:700; color:var(--muted); text-align:center; margin-bottom:14px; letter-spacing:0.5px; }
+.study-card { min-height:160px; display:flex; flex-direction:column; justify-content:center; gap:14px; padding:18px 4px; }
+.study-face { font-family:var(--display); font-size:19px; font-weight:500; line-height:1.55; color:var(--text); text-align:center; white-space:pre-wrap; }
+.study-back { color:var(--violet-soft); border-top:1px solid var(--stroke-soft); padding-top:14px; }
+.grade-row { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:14px; }
+.grade-btn { display:flex; flex-direction:column; align-items:center; gap:4px; padding:12px 4px; min-height:56px; border-radius:12px; border:1px solid var(--stroke-soft);
+  background:var(--surface-hi); cursor:pointer; font-family:var(--font); color:var(--text); transition: transform .12s var(--ease); }
+.grade-btn:active { transform: scale(0.95); }
+.grade-lbl { font-size:12px; font-weight:700; }
+.grade-int { font-size:10px; font-weight:600; color:var(--muted); }
+.grade-btn.again { background: rgba(240,80,110,0.14); border-color: rgba(240,80,110,0.35); }
+.grade-btn.again .grade-lbl { color: var(--red); }
+.grade-btn.hard { background: rgba(255,255,255,0.05); }
+.grade-btn.good { background: linear-gradient(150deg, rgba(124,58,237,0.28), rgba(91,33,182,0.28)); border-color: rgba(167,139,250,0.4); }
+.grade-btn.good .grade-lbl { color: var(--violet-soft); }
+.grade-btn.easy { background: linear-gradient(150deg, rgba(167,139,250,0.35), rgba(124,58,237,0.35)); border-color: rgba(196,181,253,0.5); }
+.grade-btn.easy .grade-lbl { color: #fff; }
+.forecast-bar { display:flex; gap:6px; align-items:flex-end; height:44px; margin-top:10px; }
+.forecast-col { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; justify-content:flex-end; height:100%; }
+.forecast-fill { width:100%; border-radius:4px 4px 0 0; background: linear-gradient(180deg, #a78bfa, #6d28d9); min-height:2px; }
+.forecast-lbl { font-size:9px; color:var(--dim); font-weight:600; }
+.mistake-card-link { font-size:11.5px; font-weight:700; color:var(--violet-hi); background:none; border:none; cursor:pointer; font-family:var(--font); padding:6px 0; }

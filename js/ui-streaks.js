@@ -3,6 +3,7 @@
 import { S, todayKey, addDays, parseKey, fmtDate, MILESTONES } from './state.js';
 import { activeRules, dayClean, streakEndingAt, perRuleStreak, isPowerDay, crowns, ruleName, mirrorHerCount30, identityValid, voteTrajectory, lifetimeClean } from './engine.js';
 import { $, esc, ICONS, ruleIcon } from './ui-shared.js';
+import { retention30, forecast } from './srs.js';
 
 export function renderStreaks() {
   // chart: streak value over last 30 days
@@ -104,5 +105,24 @@ export function renderStreaks() {
           <text x="${tx(traj.length - 1) - 6}" y="${ty(total) - 9}" fill="#c4b5fd" font-size="11" font-weight="700" text-anchor="end" font-family="Inter">${total}</text>
         </svg>`;
     }
+  }
+
+  // recall stats (P6)
+  const rsc = $('#recall-stats-card');
+  const ret = retention30(t);
+  const fc = forecast(7, t);
+  if (ret === null && !fc.some(n => n > 0)) { rsc.style.display = 'none'; }
+  else {
+    rsc.style.display = '';
+    $('#recall-retention-line').innerHTML = ret === null
+      ? '<div class="empty-note">No reviews yet in the last 30 days.</div>'
+      : `<div class="recall-summary-line">Recall — <b style="color:var(--violet-hi)">${ret}%</b> 30-day retention</div>`;
+    const maxF = Math.max(...fc, 1);
+    $('#recall-forecast').innerHTML = fc.map((n, i) => {
+      const k = addDays(t, i);
+      const lbl = i === 0 ? 'Today' : parseKey(k).toLocaleDateString('en-GB', { weekday: 'narrow' });
+      const h = Math.max(2, Math.round(36 * n / maxF));
+      return `<div class="forecast-col"><div class="forecast-fill" style="height:${h}px" title="${n} due ${k}"></div><div class="forecast-lbl">${lbl}</div></div>`;
+    }).join('');
   }
 }

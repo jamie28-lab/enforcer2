@@ -4,6 +4,7 @@ import { S, save, todayKey, hm, now } from './state.js';
 import { activeRules, wakeRule, isHoliday, day, ruleName, activeHabits, goalStatus, identityValid, votesOnDay } from './engine.js';
 import { $, esc, bus, ICONS, toast } from './ui-shared.js';
 import { logWakeUp } from './ui-today.js';
+import { dueCards } from './srs.js';
 
 /* ---------- Morning Mirror ---------- */
 export function shouldShowMirror() {
@@ -46,6 +47,7 @@ function paintMirror() {
       return `<div class="mirror-goal ${st.escalate ? 'behind' : ''}">${esc(g.name)} — ${esc(st.label)}${st.escalate ? ' · behind pace' : ''}</div>`;
     }).join('');
     const habitsHtml = activeHabits(t).map(h => `<div class="mirror-habit">${esc(h.name)}</div>`).join('');
+    const dueN = dueCards(null, t).length;
 
     box.innerHTML = `
       ${wakeStripHtml(t)}
@@ -54,6 +56,7 @@ function paintMirror() {
       ${rulesHtml ? `<div class="mirror-section"><div class="mirror-section-lbl">Today's rules</div>${rulesHtml}</div>` : ''}
       ${goalsHtml ? `<div class="mirror-section"><div class="mirror-section-lbl">Goals</div>${goalsHtml}</div>` : ''}
       ${habitsHtml ? `<div class="mirror-section"><div class="mirror-section-lbl">Today's small votes</div>${habitsHtml}</div>` : ''}
+      ${dueN > 0 ? `<div class="mirror-recall-line">${dueN} card${dueN === 1 ? '' : 's'} waiting. Study is a vote.</div>` : ''}
       <div class="mirror-portrait">${esc(id.her.portrait)}</div>
       <div class="mirror-bottom">
         <div class="mirror-question">Who are you today?</div>
