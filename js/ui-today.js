@@ -4,13 +4,14 @@ import { S, save, todayKey, parseKey, addDays, dayDiff, hm, now, fmtDate, MILEST
 import {
   activeRules, wakeRule, isHoliday, day, ensureDay, ruleOutcome, dayClean, currentStreak,
   streakEndingAt, perRuleStreak, bestStreakEver, lifetimeClean, activeHabits, isPowerDay,
-  lifetimePower, goalStatus, ruleName, pick, stageFor, settle, pending, identityValid,
+  lifetimePower, goalStatus, goalWeekProgress, ruleName, pick, stageFor, settle, pending, identityValid,
   voteBalance, lifetimeHabitDone, isComebackDay, quizStreak,
 } from './engine.js';
 import { $, esc, toast, ICONS, ruleIcon, bus, setNumber, showShame, showCelebration } from './ui-shared.js';
 import { requestNotifPermission } from './reminders.js';
 import { dueCards, rate, computeNext, draftMistakeCard } from './srs.js';
 import { loadBank, selectDailyQuestions, markServed, draftQuizCard, logQuizAnswer } from './quiz.js';
+import { renderBodyCard, wireBody } from './ui-body.js';
 
 function renderNotifBanner() {
   const nb = $('#notif-banner');
@@ -122,7 +123,7 @@ export function renderToday() {
   // escalated goals shown as rules
   for (const gid of (d.escalated || [])) {
     const g = S.goals.find(x => x.id === gid); if (!g) continue;
-    const done = (d.goalDone || {})[g.id] > 0;
+    const done = g.autoGym ? S.gym.some(w => w.date === t) : (d.goalDone || {})[g.id] > 0;
     box.insertAdjacentHTML('beforeend', `
       <div class="rule-line">
         <div class="rule-ico ${done ? 'done' : ''}">${done ? ICONS.check : ICONS.zap}</div>
@@ -190,6 +191,7 @@ export function renderToday() {
 
   renderRecall();
   renderQuizCard();
+  renderBodyCard();
 }
 
 /* ---------- Recall (P6 — FSRS spaced repetition) ---------- */
@@ -360,7 +362,7 @@ function renderCheckinContract() {
 export function openCheckin() {
   const t = todayKey(); const d = day(t);
   if (d.checkedIn) return;
-  checkinDraft = { answers: {}, goals: {} };
+  checkinDraft = { answers: {}, goals: {}, junkConfronted: false };
   $('#checkin-contract').style.display = 'none';
   const box = $('#checkin-items'); box.innerHTML = '';
   for (const r of activeRules(t).filter(r => r.kind !== 'wake')) {
@@ -370,7 +372,13 @@ export function openCheckin() {
       </div>`);
   }
   for (const g of S.goals.filter(g => g.type !== 'mile')) {
-    if (g.type === 'freq') box.insertAdjacentHTML('beforeend', `
+    if (g.type === 'freq' && g.autoGym) {
+      // P5: auto-tracked freq goal — read-only, no manual attestation needed or possible
+      box.insertAdjacentHTML('beforeend', `
+        <div class="check-item"><span class="ci-name">${esc(g.name)} today?</span>
+          <span class="auto-goal-tag">auto: ${goalWeekProgress(g)} this week</span>
+        </div>`);
+    } else if (g.type === 'freq') box.insertAdjacentHTML('beforeend', `
       <div class="check-item"><span class="ci-name">${esc(g.name)} today?</span>
         <div class="yn" data-goal="${g.id}"><button class="yes">Yes</button><button class="no">No</button></div>
       </div>`);
@@ -381,9 +389,17 @@ export function openCheckin() {
   }
   box.querySelectorAll('.yn').forEach(yn => {
     yn.querySelectorAll('button').forEach(b => b.onclick = () => {
+      const val = b.classList.contains('yes');
+      // any direct answer supersedes an open confront panel — never leave its stale buttons live
+      const stale = document.getElementById('junk-confront-box'); if (stale) stale.remove();
+      // P5 honesty hook: intercept a "Held" answer on the junk rule when today has junk-tagged
+      // meals — confront inline instead of silently accepting. Doesn't auto-fail the day either way.
+      if (yn.dataset.rule === 'junk' && val === true && !checkinDraft.junkConfronted) {
+        const junkMeals = S.meals.filter(m => m.date === t && m.tag === 'junk');
+        if (junkMeals.length) { renderJunkConfront(yn, junkMeals); return; }
+      }
       yn.querySelectorAll('button').forEach(x => x.classList.remove('on'));
       b.classList.add('on');
-      const val = b.classList.contains('yes');
       if (yn.dataset.rule) {
         checkinDraft.answers[yn.dataset.rule] = val;
         if (!val) renderCheckinContract();
@@ -391,6 +407,39 @@ export function openCheckin() {
     });
   });
   $('#checkin-veil').classList.add('open');
+}
+/* P5: junk-food check-in honesty hook. Neither path can deadlock — both set checkinDraft.answers.junk
+   and mark junkConfronted so a repeat click never re-shows this panel, and submit still requires an
+   answer for every rule, so an unresolved confront just blocks submit the same way a blank always did. */
+function renderJunkConfront(yn, junkMeals) {
+  const old = document.getElementById('junk-confront-box'); if (old) old.remove();
+  const box = document.createElement('div');
+  box.className = 'junk-confront';
+  box.id = 'junk-confront-box';
+  const first = junkMeals[0];
+  const label = first.text && first.text.trim() ? first.text.trim() : '(no note)';
+  box.innerHTML = `
+    <div class="junk-confront-line">You tagged ${junkMeals.length} meal${junkMeals.length === 1 ? '' : 's'} junk today: "${esc(label)}". Held — really?</div>
+    <div class="junk-confront-choices">
+      <button type="button" class="btn danger small" id="junk-confront-broke">I was honest — change answer to Broke</button>
+      <button type="button" class="btn ghost small" id="junk-confront-keep">The tag was wrong — keep Held</button>
+    </div>`;
+  yn.closest('.check-item').insertAdjacentElement('afterend', box);
+  $('#junk-confront-broke').onclick = () => {
+    checkinDraft.answers.junk = false;
+    checkinDraft.junkConfronted = true;
+    yn.querySelectorAll('button').forEach(x => x.classList.toggle('on', x.classList.contains('no')));
+    box.remove();
+    renderCheckinContract();
+  };
+  $('#junk-confront-keep').onclick = () => {
+    checkinDraft.answers.junk = true;
+    checkinDraft.junkConfronted = true;
+    yn.querySelectorAll('button').forEach(x => x.classList.toggle('on', x.classList.contains('yes')));
+    const m = S.meals.find(x => x.id === first.id);
+    if (m) { m.tag = 'borderline'; m.text = (m.text || '') + ' (retagged at check-in)'; save(); }
+    box.remove();
+  };
 }
 export function submitCheckin() {
   const t = todayKey(); const d = ensureDay(t);
@@ -407,10 +456,13 @@ export function submitCheckin() {
     S.mistakes.unshift({ date: t, ruleId: r.id, ruleName: ruleName(r), lost: prevStreak, note: '', motive: null });
     draftMistakeCard(S.mistakes[0]);
   }
-  // escalated goal answered 0 today -> no more input possible, treat as break now
+  // escalated goal answered 0 today (or, for autoGym goals, no workout logged today) -> treat as break now
   for (const gid of (d.escalated || [])) {
     const g = S.goals.find(x => x.id === gid);
-    if (g && ((d.goalDone || {})[gid] || 0) <= 0 && !S.mistakes.some(m => m.date === t && m.ruleId === 'goal-' + gid)) {
+    if (!g) continue;
+    const doneToday = g.autoGym ? S.gym.some(w => w.date === t) : ((d.goalDone || {})[gid] || 0) > 0;
+    if (g.autoGym) d.goalDone[gid] = doneToday ? 1 : 0;   // pin: later gym edits must not rewrite this day
+    if (!doneToday && !S.mistakes.some(m => m.date === t && m.ruleId === 'goal-' + gid)) {
       S.mistakes.unshift({ date: t, ruleId: 'goal-' + gid, ruleName: 'Goal: ' + g.name, lost: prevStreak, note: '', motive: null });
       draftMistakeCard(S.mistakes[0]);
       broken.push({ id: 'goal-' + gid });
@@ -441,4 +493,5 @@ export function wireToday() {
   $('#quiz-show').onclick = showQuizAnswer;
   $('#quiz-wrong').onclick = () => gradeQuiz(false);
   $('#quiz-right').onclick = () => gradeQuiz(true);
+  wireBody();
 }

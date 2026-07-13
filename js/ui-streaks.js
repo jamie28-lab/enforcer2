@@ -1,7 +1,7 @@
 // ENFORCER 2.0 — STREAKS view: 30-day chart, day grid, per-rule streaks, badge wall, crowns
 'use strict';
 import { S, todayKey, addDays, parseKey, fmtDate, MILESTONES } from './state.js';
-import { activeRules, dayClean, streakEndingAt, perRuleStreak, isPowerDay, crowns, ruleName, mirrorHerCount30, identityValid, voteTrajectory, lifetimeClean, recoveryScore } from './engine.js';
+import { activeRules, dayClean, streakEndingAt, perRuleStreak, isPowerDay, crowns, ruleName, mirrorHerCount30, identityValid, voteTrajectory, lifetimeClean, recoveryScore, totalVolumeLifetime, topExercisesByRecentVolume, exercisePR, exerciseSparkline } from './engine.js';
 import { $, esc, ICONS, ruleIcon } from './ui-shared.js';
 import { retention30, forecast } from './srs.js';
 
@@ -119,6 +119,36 @@ export function renderStreaks() {
     const right = S.quizLog.filter(l => l.right).length;
     const acc = Math.round(100 * right / S.quizLog.length);
     qs.innerHTML = `${ICONS.check} Quiz — <b>${S.quizLog.length}</b> answered · <b>${acc}%</b> right`;
+  }
+
+  // P5: Body — lifetime tonnage + top exercises with mini progression sparkline + PR chip
+  const bsc = $('#body-streaks-card');
+  if (!S.gym.length) { bsc.style.display = 'none'; }
+  else {
+    bsc.style.display = '';
+    const tonnes = (totalVolumeLifetime() / 1000).toFixed(1);
+    $('#body-tonnage-line').innerHTML = `<div class="tonnage-line"><b>${tonnes} t</b> moved — that's who moves it</div>`;
+    const top = topExercisesByRecentVolume(3);
+    $('#body-top-exercises').innerHTML = top.map(ex => {
+      const pr = exercisePR(ex.name);
+      const spark = exerciseSparkline(ex.name, 10);
+      const SW = 100, SH = 28;
+      const smax = Math.max(...spark, 1), smin = Math.min(...spark, 0);
+      const range = Math.max(1, smax - smin);
+      const sx = i => spark.length > 1 ? i * SW / (spark.length - 1) : SW / 2;
+      const sy = v => SH - 3 - ((v - smin) / range) * (SH - 6);
+      const points = spark.map((v, i) => `${sx(i).toFixed(1)},${sy(v).toFixed(1)}`).join(' ');
+      return `
+        <div class="exercise-row">
+          <div class="exercise-name-line">
+            <span class="exercise-name-lbl">${esc(ex.name)}</span>
+            ${pr ? `<span class="pr-chip">PR ${pr.maxKg} kg</span>` : ''}
+          </div>
+          ${spark.length > 1 ? `<svg viewBox="0 0 ${SW} ${SH}" style="width:100%; height:${SH}px; display:block; margin-top:6px">
+            <polyline points="${points}" fill="none" stroke="#a78bfa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>` : ''}
+        </div>`;
+    }).join('');
   }
 
   // recall stats (P6)

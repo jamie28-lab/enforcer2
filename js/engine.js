@@ -33,9 +33,26 @@ export function ruleOutcome(rule, k, final) {
 export function goalOutcomeOnDay(g, k, final) {
   const d = day(k);
   if (!(d.escalated || []).includes(g.id)) return true;   // wasn't escalated -> can't fail the day
-  const done = (d.goalDone || {})[g.id] || 0;
-  if (done > 0) return true;
+  // P5: autoGym goals are satisfied by a logged workout that date, not manual attestation.
+  // Once the day is settled the outcome is PINNED in goalDone — later gym edits/deletes
+  // must never rewrite a finalized day's pass/fail (streak history is immutable).
+  const pinned = (d.goalDone || {})[g.id];
+  const done = g.autoGym
+    ? (pinned !== undefined ? pinned > 0 : S.gym.some(w => w.date === k))
+    : (pinned || 0) > 0;
+  if (done) return true;
   return (k < todayKey() || final) ? false : null;
+}
+/* Pin escalated autoGym outcomes into the day record at settlement time (check-in or midnight finalize). */
+export function pinAutoGymOutcomes(k) {
+  const d = day(k);
+  for (const gid of (d.escalated || [])) {
+    const g = S.goals.find(x => x.id === gid);
+    if (!g || !g.autoGym) continue;
+    if ((d.goalDone || {})[gid] === undefined) {
+      ensureDay(k).goalDone[gid] = S.gym.some(w => w.date === k) ? 1 : 0;
+    }
+  }
 }
 export function dayClean(k, final = false) {
   if (isHoliday(k)) return 'holiday';
@@ -194,7 +211,7 @@ export function mirrorHerCount30() {
   return n;
 }
 
-/* ---------- vote economy (P2) — every vote is DERIVED from S.days/S.mirror/S.mistakes, never stored ---------- */
+/* ---------- vote economy (P2) — every vote is DERIVED from S.days/S.mirror/S.mistakes/S.gym/S.meals, never stored ---------- */
 /* memoize mistakes-by-date across a render pass; rebuilt whenever the array length changes (mistakes only ever grow via unshift) */
 let _mistakesIdx = { len: -1, map: null };
 function mistakesCountByDate(k) {
@@ -230,6 +247,12 @@ export function votesOnDay(k) {
   // HER: +1 if the day's STEM quiz (S.quizPerDay questions) was completed — S.quizDone is
   // canonical data written by the quiz overlay, same tier as S.srsDone above.
   if (S.quizDone && S.quizDone[k]) her++;
+  // HER: +1 if a workout was logged on this date (P5) — unattributed, no trait credit
+  if (S.gym.some(w => w.date === k)) her++;
+  // HER: +1 if the day's meals are ALL tagged 'clean' and at least 2 were logged (P5) —
+  // junk/borderline tags are purely informational here; a junk-food RULE break (if any) is
+  // what actually costs a vote, via the mistakes count below — meals never double-punish.
+  { const dayMeals = S.meals.filter(m => m.date === k); if (dayMeals.length >= 2 && dayMeals.every(m => m.tag === 'clean')) her++; }
 
   // OTHER: +1 per rule (or escalated goal) broken that day — one S.mistakes entry each
   other += mistakesCountByDate(k);
@@ -295,6 +318,70 @@ export function lifetimeHabitDone(h) {
   return n;
 }
 
+/* ---------- P5: Body Ledger — gym + meals (derived progression/PR helpers; entries themselves are canonical data in S.gym/S.meals) ---------- */
+const exKey = name => String(name).trim().toLowerCase();
+export function exercisePR(name) {
+  const key = exKey(name);
+  let maxKg = 0, date = null;
+  for (const w of S.gym) for (const ex of w.exercises) {
+    if (exKey(ex.name) !== key) continue;
+    for (const s of ex.sets) if (s.kg > maxKg) { maxKg = s.kg; date = w.date; }
+  }
+  return maxKg > 0 ? { maxKg, date } : null;
+}
+export function exerciseVolume30(name) {
+  const key = exKey(name), t = todayKey(), cutoff = addDays(t, -29);
+  let vol = 0;
+  for (const w of S.gym) {
+    if (w.date < cutoff || w.date > t) continue;
+    for (const ex of w.exercises) { if (exKey(ex.name) !== key) continue; for (const s of ex.sets) vol += s.reps * s.kg; }
+  }
+  return vol;
+}
+export function totalVolumeLifetime() {
+  let vol = 0;
+  for (const w of S.gym) for (const ex of w.exercises) for (const s of ex.sets) vol += s.reps * s.kg;
+  return vol;
+}
+/* top exercises by trailing-30d volume; most recent session's casing wins as display name */
+export function topExercisesByRecentVolume(n = 3) {
+  const names = new Map();
+  for (const w of S.gym) for (const ex of w.exercises) {
+    const key = exKey(ex.name); if (!key) continue;
+    const cur = names.get(key);
+    if (!cur || w.date >= cur.date) names.set(key, { name: ex.name.trim(), date: w.date });
+  }
+  return [...names.values()].map(v => ({ name: v.name, vol: exerciseVolume30(v.name) }))
+    .sort((a, b) => b.vol - a.vol).slice(0, n);
+}
+/* top-set kg per session (chronological order), last n sessions that included this exercise */
+export function exerciseSparkline(name, n = 10) {
+  const key = exKey(name);
+  const sorted = [...S.gym].sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+  const points = [];
+  for (const w of sorted) {
+    let top = 0, found = false;
+    for (const ex of w.exercises) { if (exKey(ex.name) !== key) continue; found = true; for (const s of ex.sets) if (s.kg > top) top = s.kg; }
+    if (found) points.push(top);
+  }
+  return points.slice(-n);
+}
+/* NEW-PR check: strictly greater than every prior session's top set for this exercise, and >=2 prior
+   sessions must already exist. Pass the entry's own id as excludeWorkoutId when editing an existing entry. */
+export function checkNewPR(name, newMaxKg, excludeWorkoutId) {
+  const key = exKey(name);
+  const priorSessionIds = new Set();
+  let priorMax = 0;
+  for (const w of S.gym) {
+    if (w.id === excludeWorkoutId) continue;
+    let has = false, sessionMax = 0;
+    for (const ex of w.exercises) { if (exKey(ex.name) !== key) continue; has = true; for (const s of ex.sets) if (s.kg > sessionMax) sessionMax = s.kg; }
+    if (has) { priorSessionIds.add(w.id); if (sessionMax > priorMax) priorMax = sessionMax; }
+  }
+  if (priorSessionIds.size < 2) return false;
+  return newMaxKg > priorMax;
+}
+
 /* ---------- P7: STEM quiz ---------- */
 /* consecutive days with quizDone, ending today or yesterday (today undecided doesn't break the chain) */
 export function quizStreak() {
@@ -337,6 +424,12 @@ export function priorMatchingNote(date, ruleId, motive) {
 export const weekStart = k => { const d = parseKey(k); const off = (d.getDay() + 6) % 7; d.setDate(d.getDate() - off); return dkey(d); };
 export function goalWeekProgress(g) {
   const t = todayKey(), ws = weekStart(t);
+  // P5: freq goals with autoGym count distinct S.gym dates this week instead of manual attestation
+  if (g.autoGym) {
+    const dates = new Set();
+    for (const w of S.gym) if (w.date >= ws && w.date <= t) dates.add(w.date);
+    return dates.size;
+  }
   let done = 0;
   for (let i = 0; i < 7; i++) {
     const k = addDays(ws, i); if (k > t) break;
@@ -389,6 +482,7 @@ export function settle() {
   while (cur < t) {
     const d = ensureDay(cur);
     if (!d.finalized) {
+      pinAutoGymOutcomes(cur);   // pin before judging so the outcome is immutable from here on
       if (!isHoliday(cur)) {
         for (const r of activeRules(cur)) {
           if (ruleOutcome(r, cur, true) === false && !S.mistakes.some(m => m.date === cur && m.ruleId === r.id)) {

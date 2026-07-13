@@ -472,3 +472,54 @@ nav button.on svg { filter: drop-shadow(0 0 8px var(--violet-glow)); }
 .weakness-sentence { font-size:12.5px; color:var(--muted); margin-top:4px; line-height:1.5; }
 .weakness-arm-row { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:8px; }
 .sheet-veil.above-mirror { z-index:260; }
+
+/* ---------- P5: Body Ledger — collapsible LOGS sections, meal tags, gym log ---------- */
+.collapsible-head { display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none; min-height:44px; }
+.collapsible-head .chev, .gym-entry-head .chev { width:16px; height:16px; stroke:var(--muted); transition: transform .2s var(--ease); flex-shrink:0; }
+.collapsible-head.open .chev, .chev.open { transform: rotate(180deg); }
+.collapsible-body { padding-top:12px; }
+
+.body-dots { display:flex; align-items:center; gap:14px; flex-wrap:wrap; font-size:12.5px; color:var(--muted); font-weight:700; }
+.body-dots span { display:inline-flex; align-items:center; gap:6px; }
+.body-dot { width:9px; height:9px; border-radius:50%; display:inline-block; }
+.body-dot.clean { background: var(--green); }
+.body-dot.borderline { background: var(--ember-hi); }
+.body-dot.junk { background: var(--red); }
+
+.tag-row { display:flex; gap:8px; }
+.tag-btn { flex:1; min-height:44px; padding:10px 6px; border-radius:12px; border:1px solid var(--stroke-soft); background:rgba(255,255,255,0.05);
+  color:var(--muted); font-family:var(--font); font-size:13px; font-weight:700; cursor:pointer; transition: all .12s; }
+.tag-btn.clean.on { background:rgba(52,211,153,0.16); border-color:rgba(52,211,153,0.5); color:var(--green); box-shadow:0 0 14px rgba(52,211,153,0.2); }
+.tag-btn.borderline.on { background:rgba(251,191,36,0.16); border-color:rgba(251,191,36,0.5); color:var(--ember-hi); box-shadow:0 0 14px rgba(245,158,11,0.2); }
+.tag-btn.junk.on { background:rgba(240,80,110,0.16); border-color:rgba(240,80,110,0.5); color:var(--red); box-shadow:0 0 14px var(--red-glow); }
+
+.meal-row { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--stroke-soft); cursor:pointer; }
+.meal-row:last-child { border-bottom:none; }
+.meal-time { font-size:12px; font-weight:700; color:var(--muted); font-variant-numeric:tabular-nums; width:44px; flex-shrink:0; }
+.meal-text { font-size:13.5px; color:var(--text); flex:1; }
+.meal-day-lbl { font-size:10.5px; font-weight:700; letter-spacing:0.8px; color:var(--dim); text-transform:uppercase; margin: 10px 0 4px; }
+.meal-day-lbl:first-child { margin-top:0; }
+
+.gym-entry-head { display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding:2px 0; gap:10px; }
+.gym-summary { font-size:12.5px; color:var(--muted); margin-top:2px; }
+.gym-entry-detail { padding-top:8px; }
+.gym-detail-line { font-size:13px; color:var(--text); padding:3px 0; }
+
+.gym-ex-row { border:1px solid var(--stroke-soft); border-radius: var(--r-sm); padding:12px; margin-bottom:10px; background:rgba(255,255,255,0.03); }
+.gym-set-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.gym-set-row input[type="number"] { width:64px; min-height:40px; background:rgba(255,255,255,0.05); border:1px solid var(--stroke-soft); border-radius:9px; color:var(--text); padding:6px 8px; font-family:var(--font); font-size:13px; text-align:center; }
+.gym-set-row span { font-size:13px; color:var(--dim); font-weight:700; }
+
+.auto-goal-tag { font-size:11.5px; font-weight:700; color:var(--violet-soft); background:rgba(109,40,217,0.12); border:1px solid rgba(167,139,250,0.28); border-radius:99px; padding:6px 11px; }
+
+.junk-confront { border:1px solid rgba(240,80,110,0.4); background:rgba(240,80,110,0.08); border-radius: var(--r-sm); padding:12px 14px; margin: 4px 0 8px; }
+.junk-confront-line { font-size:13px; color:var(--text); line-height:1.5; }
+.junk-confront-choices { display:flex; flex-direction:column; gap:8px; margin-top:10px; }
+
+.exercise-row { padding:12px 0; border-bottom:1px solid var(--stroke-soft); }
+.exercise-row:last-child { border-bottom:none; }
+.exercise-name-line { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.exercise-name-lbl { font-size:13.5px; font-weight:700; }
+.pr-chip { font-size:10.5px; font-weight:800; letter-spacing:0.5px; color:var(--ember-hi); background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.32); border-radius:99px; padding:4px 9px; white-space:nowrap; }
+.tonnage-line { font-size:13.5px; font-weight:700; color:var(--text); margin-bottom:12px; }
+.tonnage-line b { color: var(--ember-hi); }

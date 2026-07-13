@@ -152,8 +152,23 @@ function normalize() {
   S.mistakes = (S.mistakes || []).map(m => ('motive' in m) ? m : { ...m, motive: null });
   S.votes = S.votes || [];
   S.decks = S.decks || {};
-  S.gym = S.gym || [];
-  S.meals = S.meals || [];
+  // P5 Body Ledger: ensure array + per-entry shape defaults (id/date present)
+  S.gym = (S.gym || []).map((g, i) => ({
+    id: g.id || ('gym-' + Date.now() + '-' + i),
+    date: g.date || todayKey(),
+    exercises: (g.exercises || []).map(ex => ({
+      name: ex.name || '',
+      sets: (ex.sets || []).map(s => ({ reps: s.reps || 1, kg: s.kg || 0 })),
+    })),
+    note: g.note || '',
+  }));
+  S.meals = (S.meals || []).map((m, i) => ({
+    id: m.id || ('meal-' + Date.now() + '-' + i),
+    date: m.date || todayKey(),
+    time: m.time || '12:00',
+    text: m.text || '',
+    tag: m.tag === 'borderline' || m.tag === 'junk' ? m.tag : 'clean',
+  }));
   S.mirror = S.mirror || {};
   S.p1Migrated = S.p1Migrated || false;
   if (!S.p1Migrated) {

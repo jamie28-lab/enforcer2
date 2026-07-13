@@ -5,6 +5,7 @@ import { weaknesses, identityValid } from './engine.js';
 import { $, esc, toast, bus } from './ui-shared.js';
 import { findMistakeCard } from './srs.js';
 import { syncNtfy, syncCfPush } from './reminders.js';
+import { renderGymMealLogs } from './ui-body.js';
 
 const MOTIVES = [['stress', 'Stress'], ['boredom', 'Boredom'], ['social', 'Social'], ['tired', 'Tired'], ['craving', 'Craving'], ['other', 'Other']];
 const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -33,6 +34,7 @@ function weaknessRemText(w) {
 }
 
 export function renderLogs() {
+  renderGymMealLogs();
   const wc = $('#weakness-card'), wl = $('#weakness-list');
   const wks = weaknesses();
   if (!wks.length) { wc.style.display = 'none'; }

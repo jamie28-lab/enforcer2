@@ -104,7 +104,7 @@ export function renderSettings() {
   for (const g of S.goals) {
     sg.insertAdjacentHTML('beforeend', `
       <div class="set-rule">
-        <div style="flex:1"><div class="rule-name">${esc(g.name)}</div><div class="rule-meta">${g.type === 'freq' ? g.target + '× / week' : g.type === 'cume' ? g.target + ' ' + esc(g.unit || '') + ' / week' : 'by ' + fmtDate(g.date)} · ${g.enforce ? 'enforced' : 'informational'}</div></div>
+        <div style="flex:1"><div class="rule-name">${esc(g.name)}</div><div class="rule-meta">${g.type === 'freq' ? g.target + '× / week' : g.type === 'cume' ? g.target + ' ' + esc(g.unit || '') + ' / week' : 'by ' + fmtDate(g.date)} · ${g.enforce ? 'enforced' : 'informational'}${g.autoGym ? ' · auto-tracked' : ''}</div></div>
         ${g.type === 'mile' && !g.completed ? `<button class="mini-link" data-gdone="${g.id}">Mark done</button>` : ''}
         <button class="mini-link danger" data-gdel="${g.id}">Delete</button>
       </div>`);
@@ -198,6 +198,7 @@ function openGoalSheet() {
   goalType = 'freq';
   $('#goal-name').value = ''; $('#goal-target').value = ''; $('#goal-unit').value = ''; $('#goal-date').value = '';
   $('#goal-enforce').checked = true;
+  $('#goal-autogym').checked = false;
   const gtf = $('#goal-trait-f');
   if (identityValid()) { gtf.style.display = ''; $('#goal-trait').innerHTML = traitOptionsHtml(); $('#goal-trait').value = ''; }
   else gtf.style.display = 'none';
@@ -210,12 +211,14 @@ function updateGoalTypeUI() {
   $('#goal-target-lbl').textContent = goalType === 'freq' ? 'Times per week' : 'Amount per week';
   $('#goal-unit-f').style.display = goalType === 'cume' ? '' : 'none';
   $('#goal-date-f').style.display = goalType === 'mile' ? '' : 'none';
+  $('#goal-autogym-f').style.display = goalType === 'freq' ? '' : 'none';
 }
 function saveGoal() {
   const name = $('#goal-name').value.trim();
   if (!name) { toast('Name the goal.'); return; }
   const traitId = identityValid() ? ($('#goal-trait').value || null) : null;
   const g = { id: 'g' + Date.now(), name, type: goalType, enforce: $('#goal-enforce').checked, completed: false, traitId };
+  g.autoGym = goalType === 'freq' && $('#goal-autogym').checked;
   if (goalType === 'mile') { const dt = $('#goal-date').value; if (!dt || dt <= todayKey()) { toast('Pick a future deadline.'); return; } g.date = dt; }
   else { const tg = parseFloat($('#goal-target').value); if (!tg || tg <= 0) { toast('Set a target.'); return; } g.target = tg; if (goalType === 'cume') g.unit = $('#goal-unit').value.trim() || 'units'; }
   S.goals.push(g); save();

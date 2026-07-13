@@ -103,6 +103,15 @@
     <div id="quiz-summary"></div>
     <button class="btn ghost small" id="quiz-start-btn" style="margin-top:12px">Start</button>
   </div>
+
+  <div class="card" id="body-card">
+    <h3><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/></svg>Body</h3>
+    <div id="body-meal-dots" class="body-dots"></div>
+    <div class="row" style="gap:10px; margin-top:12px">
+      <button class="btn ghost small" id="body-log-meal-btn" style="flex:1">Log meal</button>
+      <button class="btn ghost small" id="body-log-workout-btn" style="flex:1">Log workout</button>
+    </div>
+  </div>
 </main>
 
 <!-- ============ STREAKS ============ -->
@@ -149,11 +158,39 @@
     <h3><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"/></svg>Crowns</h3>
     <div class="crown-row" id="crown-row"></div>
   </div>
+
+  <div class="card" id="body-streaks-card" style="display:none">
+    <h3><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/></svg>Body</h3>
+    <div id="body-tonnage-line"></div>
+    <div id="body-top-exercises"></div>
+  </div>
 </main>
 
 <!-- ============ LOGS ============ -->
 <main id="view-logs" class="view">
   <div class="top"><div class="wordmark"><span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></span>LOGS</div></div>
+
+  <div class="card">
+    <div class="collapsible-head" id="logs-gym-toggle">
+      <h3 style="margin-bottom:0"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/></svg>Gym</h3>
+      <svg class="chev" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="collapsible-body" id="logs-gym-body" style="display:none">
+      <div id="gym-log-list"></div>
+      <button class="btn ghost small" id="logs-add-workout-btn" style="margin-top:12px">Log workout</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="collapsible-head" id="logs-meals-toggle">
+      <h3 style="margin-bottom:0"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 2v7c0 1.1.9 2 2 2s2-.9 2-2V2M9 11v11M17 2c-1.5 0-3 1.5-3 5v3h3v9"/></svg>Meals</h3>
+      <svg class="chev" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="collapsible-body" id="logs-meals-body" style="display:none">
+      <div id="meal-log-list"></div>
+      <button class="btn ghost small" id="logs-add-meal-btn" style="margin-top:12px">Log meal</button>
+    </div>
+  </div>
 
   <div class="card" id="weakness-card" style="display:none">
     <h3><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Known weaknesses</h3>
@@ -394,11 +431,51 @@
       <input type="checkbox" id="goal-enforce" checked>
       <span style="font-size:13.5px; font-weight:600">Enforce (escalates to hard rule at pace limit)</span>
     </label>
+    <label class="row" id="goal-autogym-f" style="justify-content:flex-start; gap:10px; margin-bottom:14px; cursor:pointer; display:none">
+      <input type="checkbox" id="goal-autogym">
+      <span style="font-size:13.5px; font-weight:600">Count gym workouts automatically</span>
+    </label>
     <div class="field" id="goal-trait-f" style="display:none"><label>Serves trait (optional)</label><select id="goal-trait"><option value="">None</option></select></div>
     <button class="btn" id="goal-save">Save goal</button>
     <button class="btn ghost" id="goal-cancel" style="margin-top:10px">Cancel</button>
   </div>
 </div>
+
+<!-- meal log sheet -->
+<div class="sheet-veil" id="meal-veil">
+  <div class="sheet">
+    <div class="sheet-grip"></div>
+    <h2 id="meal-sheet-title">Log meal</h2>
+    <div class="field"><label>Time</label><input type="time" id="meal-time"></div>
+    <div class="field"><label>What</label><input id="meal-text" maxlength="80" placeholder="e.g. Chicken salad"></div>
+    <div class="field"><label>Tag</label>
+      <div class="tag-row" id="meal-tag-row">
+        <button type="button" class="tag-btn clean" data-tag="clean">Clean</button>
+        <button type="button" class="tag-btn borderline" data-tag="borderline">Borderline</button>
+        <button type="button" class="tag-btn junk" data-tag="junk">Junk</button>
+      </div>
+    </div>
+    <button class="btn" id="meal-save">Save meal</button>
+    <button class="btn ghost" id="meal-delete" style="margin-top:10px; display:none">Delete</button>
+    <button class="btn ghost" id="meal-cancel" style="margin-top:10px">Cancel</button>
+  </div>
+</div>
+
+<!-- gym log sheet -->
+<div class="sheet-veil" id="gym-veil">
+  <div class="sheet">
+    <div class="sheet-grip"></div>
+    <h2 id="gym-sheet-title">Log workout</h2>
+    <div class="field"><label>Date</label><input type="date" id="gym-date"></div>
+    <div id="gym-exercises"></div>
+    <button type="button" class="btn ghost small" id="gym-add-exercise" style="margin-top:6px">+ Exercise</button>
+    <div class="field" style="margin-top:14px"><label>Note (optional)</label><input id="gym-note" maxlength="120"></div>
+    <button class="btn" id="gym-save" style="margin-top:14px">Save workout</button>
+    <button class="btn ghost" id="gym-delete" style="margin-top:10px; display:none">Delete</button>
+    <button class="btn ghost" id="gym-cancel" style="margin-top:10px">Cancel</button>
+  </div>
+</div>
+<datalist id="exercise-names-list"></datalist>
 
 <!-- identity setup sheet -->
 <div class="sheet-veil" id="identity-veil">
