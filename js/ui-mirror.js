@@ -1,10 +1,14 @@
 // ENFORCER 2.0 — Morning Mirror overlay + Identity setup sheet
 'use strict';
 import { S, save, todayKey, hm, now } from './state.js';
-import { activeRules, wakeRule, isHoliday, day, ruleName, activeHabits, goalStatus, identityValid, votesOnDay, isComebackDay } from './engine.js';
-import { $, esc, bus, ICONS, toast } from './ui-shared.js';
+import {
+  activeRules, wakeRule, isHoliday, day, ruleName, activeHabits, goalStatus, identityValid, votesOnDay, isComebackDay,
+  shouldShowPortraitReview, markPortraitReviewed, mostRecentBreakGlassNote,
+} from './engine.js';
+import { $, esc, bus, ICONS, toast, peekShameJustClosed } from './ui-shared.js';
 import { logWakeUp, openStudy } from './ui-today.js';
 import { dueCards } from './srs.js';
+import { renderBreakGlassFireCard } from './ui-breakglass.js';
 
 /* ---------- Morning Mirror ---------- */
 export function shouldShowMirror() {
@@ -13,16 +17,18 @@ export function shouldShowMirror() {
   return !S.mirror[todayKey()];
 }
 
-let mirrorStage = 'question';   // 'question' | 'confrontation' | 'affirmation'
+let mirrorStage = 'question';   // 'question' | 'confrontation' | 'affirmation' | 'review'
 
 export function openMirror() {
   mirrorStage = 'question';
   paintMirror();
   $('#mirror-veil').classList.add('open');
+  renderBreakGlassFireCard();   // P4: one note max — TODAY fire card yields while the mirror is up
 }
 function closeMirror() {
   $('#mirror-veil').classList.remove('open');
   $('#mirror-inner').onclick = null;
+  renderBreakGlassFireCard();   // P4: re-evaluate now that the mirror is gone
 }
 function logMirrorAnswer(answer) {
   S.mirror[todayKey()] = { answer, answeredAt: now().toISOString() };
@@ -51,6 +57,11 @@ function paintMirror() {
     const comeback = isComebackDay(t);
     const mistakesDue = dueCards('mistakes', t).length;
     const forceStudy = comeback && mistakesDue > 0 && !S.mirrorStudyDone[t];
+    // P4: comeback morning carrot — most recent break-glass note below the portrait.
+    // Suppressed if a shame screen was dismissed this very render pass (carrot never follows the stick).
+    const bgNote = comeback && !peekShameJustClosed() ? mostRecentBreakGlassNote() : null;
+    // P4: up to 2 most recent decisive-moment playbook entries (S.playbook is newest-first)
+    const decisive = S.playbook.filter(p => p.kind === 'decisive').slice(0, 2);
 
     box.innerHTML = `
       ${wakeStripHtml(t)}
@@ -60,9 +71,11 @@ function paintMirror() {
       ${rulesHtml ? `<div class="mirror-section"><div class="mirror-section-lbl">Today's rules</div>${rulesHtml}</div>` : ''}
       ${goalsHtml ? `<div class="mirror-section"><div class="mirror-section-lbl">Goals</div>${goalsHtml}</div>` : ''}
       ${habitsHtml ? `<div class="mirror-section"><div class="mirror-section-lbl">Today's small votes</div>${habitsHtml}</div>` : ''}
+      ${decisive.length ? `<div class="mirror-section"><div class="mirror-section-lbl">Decisive moments</div>${decisive.map(p => `<div class="mirror-decisive">${ICONS.fork}<span>${esc(p.text)}</span></div>`).join('')}</div>` : ''}
       ${dueN > 0 ? `<div class="mirror-recall-line">${dueN} card${dueN === 1 ? '' : 's'} waiting. Study is a vote.</div>` : ''}
       ${!S.quizDone[t] ? `<div class="mirror-recall-line">Daily quiz waiting — ${S.quizPerDay || 5} questions.</div>` : ''}
       <div class="mirror-portrait">${esc(id.her.portrait)}</div>
+      ${bgNote ? `<div class="card breakglass-card mirror-bg-note"><div class="breakglass-lbl">From you, day ${bgNote.streakAtWrite}:</div><div class="breakglass-text">${esc(bgNote.text)}</div></div>` : ''}
       <div class="mirror-bottom">
         <div class="mirror-question">Who are you today?</div>
         ${forceStudy ? `<div class="mirror-force-study"><button class="btn" id="mirror-study-btn">Study ${mistakesDue} mistake card${mistakesDue === 1 ? '' : 's'} first</button></div>` : ''}
@@ -90,6 +103,25 @@ function paintMirror() {
     wireMirrorWake();
     $('#mirror-confront-no').onclick = e => { e.stopPropagation(); logMirrorAnswer('her-after-confrontation'); mirrorStage = 'affirmation'; paintMirror(); bus.refresh(false); };
     $('#mirror-confront-yes').onclick = () => { logMirrorAnswer('other'); closeMirror(); bus.refresh(false); };
+  } else if (mirrorStage === 'review') {
+    // P4: weekly portrait review — one screen, one tap exits. The mirror answer is already
+    // logged (logMirrorAnswer saved before the affirmation stage), so nothing can be lost here.
+    box.innerHTML = `
+      <div class="mirror-kicker">PORTRAIT REVIEW</div>
+      <div class="portrait-review-title">Still true? Edit anything that isn't.</div>
+      <div class="portrait-review-block"><div class="identity-lbl">${esc(id.her.name)}</div><div class="identity-portrait">${esc(id.her.portrait)}</div></div>
+      <div class="portrait-review-block"><div class="identity-lbl">${esc(id.other.name)}</div><div class="identity-portrait">${esc(id.other.portrait)}</div></div>
+      <div class="identity-traits">${id.her.traits.map(tr => `<span class="trait-tag">${esc(tr.label)}</span>`).join('')}</div>
+      <div class="mirror-bottom">
+        <div class="mirror-choices">
+          <button class="btn" id="review-true-btn">Still true</button>
+          <button class="btn ghost" id="review-edit-btn">Edit</button>
+        </div>
+      </div>`;
+    $('#review-true-btn').onclick = e => { e.stopPropagation(); markPortraitReviewed(); closeMirror(); bus.refresh(false); };
+    // Edit logs the review immediately (so closing the sheet also counts as logged), then
+    // closes the mirror BEFORE opening the identity sheet — the sheet (z200) sits under the mirror (z250).
+    $('#review-edit-btn').onclick = e => { e.stopPropagation(); markPortraitReviewed(); closeMirror(); openIdentitySetup(); };
   } else {
     const n = votesOnDay(t).her;
     box.innerHTML = `
@@ -98,8 +130,13 @@ function paintMirror() {
         <div class="mirror-affirm-line">Then act like it. See you tonight.</div>
         ${n > 0 ? `<div class="mirror-votes-line">+${n} votes available today</div>` : ''}
       </div>`;
-    box.onclick = closeMirror;
-    setTimeout(() => { if (mirrorStage === 'affirmation') closeMirror(); }, 2000);
+    const goReview = shouldShowPortraitReview();
+    const leaveAffirmation = () => {
+      if (goReview) { mirrorStage = 'review'; paintMirror(); }
+      else closeMirror();
+    };
+    box.onclick = leaveAffirmation;
+    setTimeout(() => { if (mirrorStage === 'affirmation') leaveAffirmation(); }, 2000);
   }
 }
 function parseMirrorDate(t) {

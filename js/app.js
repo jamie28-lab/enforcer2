@@ -3,7 +3,8 @@
 import { load, setRefreshHook, installDebugHook } from './state.js';
 import { applyEscalations, settle, pending } from './engine.js';
 import { normalizeSrs } from './srs.js';
-import { $, bus, toast, wireOverlays, showShame, showCelebration } from './ui-shared.js';
+import { $, bus, toast, wireOverlays, showShame, showCelebration, clearShameJustClosed } from './ui-shared.js';
+import { wireBreakGlass } from './ui-breakglass.js';
 import { renderToday, wireToday } from './ui-today.js';
 import { renderStreaks } from './ui-streaks.js';
 import { renderLogs, wireLogs } from './ui-logs.js';
@@ -25,6 +26,8 @@ function refresh(reSettle = true) {
   if (pending.shame) { showShame(pending.shame); pending.shame = null; }
   else if (pending.celebration) { showCelebration(pending.celebration); pending.celebration = null; }
   checkMirror();
+  // P4: the shame-dismissal flag suppressed break-glass notes for exactly this render pass — release it
+  clearShameJustClosed();
 }
 function checkMirror() {
   // defer while any overlay is up (check-in sheet, shame/celebration, setup) — re-runs on next refresh/tick
@@ -48,6 +51,7 @@ wireLogs();
 wireSettings();
 wireOverlays();
 wireIdentitySetup();
+wireBreakGlass();
 applyEscalations();
 settle();
 refresh(false);

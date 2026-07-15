@@ -1,7 +1,7 @@
 // ENFORCER 2.0 — SETTINGS view: rules, habits, goals, holidays, reminders, push, phrases, export
 'use strict';
 import { S, save, todayKey, addDays, fmtDate, hm, now, DEFAULT_PHRASES } from './state.js';
-import { wakeRule, goalStatus, ruleName, pending, identityValid, traitVotes30 } from './engine.js';
+import { wakeRule, goalStatus, ruleName, pending, identityValid, traitVotes30, goldilocks } from './engine.js';
 import { $, esc, toast, ICONS, ruleIcon, bus } from './ui-shared.js';
 import { requestNotifPermission, randTopic, syncNtfy, syncCfPush, enableCfPush, disableCfPush } from './reminders.js';
 import { openIdentitySetup } from './ui-mirror.js';
@@ -114,6 +114,27 @@ export function renderSettings() {
     const g = S.goals.find(x => x.id === b.dataset.gdone); g.completed = true; save();
     pending.celebration = { n: '✓', title: g.name + ' — done', goal: true }; bus.refresh();
   });
+
+  // P4: Goldilocks tuning nudges — derived on render, dismiss per kind+id+month
+  const tc = $('#tuning-card'), tl = $('#tuning-list');
+  const monthK = todayKey().slice(0, 7);
+  const nudges = goldilocks().filter(n => !S.goldilocksDismissed[n.kind + n.id + monthK]);
+  if (!nudges.length) { tc.style.display = 'none'; }
+  else {
+    tc.style.display = '';
+    tl.innerHTML = nudges.map(n => `
+      <div class="nudge-row">
+        <div class="nudge-label">${n.kind === 'raise' ? '▲' : '▼'} ${esc(n.label)}</div>
+        <div class="nudge-detail">${esc(n.detail)}</div>
+        <button type="button" class="mini-link danger" data-ndismiss="${n.kind}|${n.id}">Dismiss this month</button>
+      </div>`).join('');
+    tl.querySelectorAll('[data-ndismiss]').forEach(b => b.onclick = () => {
+      const [kind, id] = b.dataset.ndismiss.split('|');
+      S.goldilocksDismissed[kind + id + monthK] = true;
+      save(); renderSettings();
+      toast('Nudge dismissed — back next month if it still holds.');
+    });
+  }
 
   // holiday
   const hs = $('#holiday-status'); hs.innerHTML = '';

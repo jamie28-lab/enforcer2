@@ -1,13 +1,14 @@
 // ENFORCER 2.0 — shared UI: $ helpers, toast, icons, confetti, overlays, render bus
 'use strict';
 import { S, save } from './state.js';
-import { pick, bestStreakEver, pending, priorMatchingNote } from './engine.js';
+import { pick, bestStreakEver, pending, priorMatchingNote, currentStreak, canPromptBreakGlass } from './engine.js';
 
 /* Render bus — app.js wires the real functions in; avoids circular imports. */
 export const bus = {
   refresh: () => {},
   renderSettings: () => {},
   repaintMirror: () => {},
+  openBreakGlassWrite: () => {},
 };
 
 export const $ = s => document.querySelector(s);
@@ -32,6 +33,7 @@ export const ICONS = {
   crown: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"/></svg>',
   lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
   mirror: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/></svg>',
+  fork: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v6a4 4 0 0 0 4 4v10M16 2v6a4 4 0 0 1-4 4"/></svg>',
 };
 export const ruleIcon = r => r.kind === 'wake' ? ICONS.sun : (r.id === 'alcohol' ? ICONS.wine : (r.id === 'junk' ? ICONS.burger : ICONS.shield));
 
@@ -58,6 +60,14 @@ export function showCelebration(c) {
   $('#cel-num').textContent = c.n;
   $('#cel-title').textContent = c.title;
   $('#cel-line').textContent = pick('milestone', { n: c.n, record: bestStreakEver() });
+  const inviteBox = $('#cel-bg-invite');
+  const streak = currentStreak();
+  if (c.milestone && canPromptBreakGlass(streak)) {
+    inviteBox.style.display = '';
+    inviteBox.querySelector('#cel-bg-write-btn').onclick = () => bus.openBreakGlassWrite(streak);
+  } else {
+    inviteBox.style.display = 'none';
+  }
   $('#celebrate-veil').classList.add('open');
   confetti();
 }
@@ -100,6 +110,15 @@ export function showShame(ctx) {
   renderShameMotives();
   $('#shame-veil').classList.add('open');
 }
+/* P4: one-tick suppression flag so a break-glass note can never render on, adjacent to,
+   or immediately after the shame screen. Set on shame dismissal, peeked (not cleared) by
+   renderToday()/paintMirror() during that same refresh pass, then cleared once by app.js's
+   refresh() after both have run — so it only suppresses the single very-next render. */
+let shameJustClosed = false;
+export function markShameClosed() { shameJustClosed = true; }
+export function peekShameJustClosed() { return shameJustClosed; }
+export function clearShameJustClosed() { shameJustClosed = false; }
+
 export function confetti() {
   if (reducedMotion()) return;
   const cv = $('#confetti'); const ctx = cv.getContext('2d');
@@ -129,6 +148,7 @@ export function wireOverlays() {
     const note = $('#shame-note').value.trim();
     if (note) { const m = shameMistake || S.mistakes.find(m => m.date === shameCtx.date && !m.note); if (m) { m.note = note; save(); } }
     $('#shame-veil').classList.remove('open');
+    markShameClosed();
     if (pending.shame) { showShame(pending.shame); pending.shame = null; }
     bus.refresh(false);
   };

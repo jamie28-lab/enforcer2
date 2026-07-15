@@ -523,8 +523,122 @@ export function settle() {
   for (const m of MILESTONES) {
     if (streak >= m.n && !S.badges.some(b => b.n === m.n)) {
       S.badges.push({ n: m.n, title: m.title, date: t });
-      pending.celebration = { n: m.n, title: m.title };
+      pending.celebration = { n: m.n, title: m.title, milestone: true };
     }
   }
   save();
+}
+
+/* ---------- P4: Break-Glass notes ---------- */
+export function mostRecentBreakGlassNote() {
+  return S.breakGlass.length ? S.breakGlass[S.breakGlass.length - 1] : null;
+}
+export function canPromptBreakGlass(streak) {
+  if (streak < 3) return false;
+  const last = mostRecentBreakGlassNote();
+  if (last && dayDiff(last.writtenOn, todayKey()) < 7) return false;
+  return true;
+}
+export function addBreakGlassNote(text, streak) {
+  S.breakGlass.push({ id: 'bg' + Date.now(), text, writtenOn: todayKey(), streakAtWrite: streak });
+  if (S.breakGlass.length > 10) S.breakGlass.shift();
+  save();
+}
+export function weaknessArmedToday() {
+  // P3 weekly weakness reminder firing today (weekday match) — daily motive/rule
+  // reminders are excluded so the carrot doesn't fire every single evening.
+  const wd = parseKey(todayKey()).getDay();
+  return S.reminders.some(r => r.id.startsWith('rem-wk-') && r.repeat === 'weekly' && r.day === wd);
+}
+/* evening (21:30+, check-in pending, any rule undecided) or weakness-armed-day (from 18:00) fire condition.
+   Requires !checkedIn so it can never collide with a same-day checkin-triggered shame screen. */
+export function breakGlassFireNow(k) {
+  if (!S.breakGlass.length) return false;
+  const d = day(k);
+  if (d.checkedIn) return false;
+  const cur = hm(now());
+  if (cur >= '21:30') {
+    if (activeRules(k).some(r => ruleOutcome(r, k, false) === null)) return true;
+  }
+  if (cur >= '18:00' && weaknessArmedToday()) return true;
+  return false;
+}
+
+/* ---------- P4: weekly portrait review ---------- */
+export function shouldShowPortraitReview() {
+  if (!identityValid()) return false;
+  if (dayDiff(S.identity.createdAt, todayKey()) < 7) return false;
+  return !S.portraitReview[weekStart(todayKey())];
+}
+export function markPortraitReviewed() {
+  S.portraitReview[weekStart(todayKey())] = true;
+  save();
+}
+
+/* ---------- P4: monthly Goodhart audit ---------- */
+export function shouldShowGoodhartAudit() {
+  const mk = todayKey().slice(0, 7);
+  return parseKey(todayKey()).getDate() === 1 && !S.goodhartDone[mk];
+}
+export function markGoodhartDone() {
+  S.goodhartDone[todayKey().slice(0, 7)] = true;
+  save();
+}
+
+/* ---------- P4: Goldilocks nudges (derived, no stored analysis) ---------- */
+function goalDoneCountInWeek(g, ws) {
+  if (g.autoGym) {
+    const dates = new Set();
+    for (const w of S.gym) if (w.date >= ws && w.date <= addDays(ws, 6)) dates.add(w.date);
+    return dates.size;
+  }
+  let done = 0;
+  for (let i = 0; i < 7; i++) if ((day(addDays(ws, i)).goalDone || {})[g.id] > 0) done++;
+  return done;
+}
+export function goldilocks() {
+  const out = [];
+  const t = todayKey();
+  for (const h of S.habits.filter(x => !x.removedOn)) {
+    let eligible = 0, done = 0;
+    for (let i = 0; i < 14; i++) {
+      const k = addDays(t, -i);
+      if (k < h.addedOn || k < S.createdAt || isHoliday(k)) continue;
+      eligible++;
+      if ((day(k).habitsDone || {})[h.id]) done++;
+    }
+    if (eligible >= 10 && done / eligible >= 0.9) {
+      out.push({ kind: 'raise', targetType: 'habit', id: h.id, label: h.name, detail: 'Might be too easy now' });
+    }
+  }
+  const curWs = weekStart(t);
+  for (const g of S.goals.filter(x => x.enforce && x.type === 'freq')) {
+    const weeks = [];
+    for (let w = 1; w <= 3; w++) {
+      const ws = addDays(curWs, -7 * w);
+      if (ws < S.createdAt) { weeks.length = 0; break; }
+      weeks.push(ws);
+    }
+    if (weeks.length < 3) continue;
+    const avg = weeks.reduce((a, ws) => a + goalDoneCountInWeek(g, ws) / g.target, 0) / weeks.length;
+    if (avg < 0.4) out.push({ kind: 'ease', targetType: 'goal', id: g.id, label: g.name, detail: 'Might be too hard — scale it down?' });
+  }
+  return out;
+}
+
+/* ---------- P4: staleness flags (derived, no stored analysis) ---------- */
+export function staleHabits() {
+  const out = [];
+  const t = todayKey();
+  for (const h of S.habits.filter(x => !x.removedOn)) {
+    if (dayDiff(h.addedOn, t) < 20) continue;
+    let allDone = true, allUndone = true;
+    for (let i = 0; i < 21; i++) {
+      const k = addDays(t, -i);
+      if (k < h.addedOn) { allDone = false; allUndone = false; break; }
+      if ((day(k).habitsDone || {})[h.id]) allUndone = false; else allDone = false;
+    }
+    if (allDone || allUndone) out.push({ id: h.id, label: h.name });
+  }
+  return out;
 }

@@ -102,6 +102,11 @@ export function freshState() {
     mirror: {},
     mirrorStudyDone: {},
     contract: null,
+    breakGlass: [],
+    portraitReview: {},
+    goodhartDone: {},
+    goldilocksDismissed: {},
+    staleDismissed: {},
   };
 }
 
@@ -185,6 +190,13 @@ function normalize() {
   S.quizLog = S.quizLog || [];            // {date, qid, right} — capped at 1000 newest, same eviction as srsLog
   if (!('quizSeed' in S)) S.quizSeed = null;   // rolled once via crypto.getRandomValues, then deterministic forever
   S.quizPerDay = S.quizPerDay || 5;
+  // ---- P4: Break-Glass + Review Layer ----
+  S.breakGlass = S.breakGlass || [];
+  S.portraitReview = S.portraitReview || {};
+  S.goodhartDone = S.goodhartDone || {};
+  S.goldilocksDismissed = S.goldilocksDismissed || {};
+  S.staleDismissed = S.staleDismissed || {};
+  S.playbook = (S.playbook || []).map(p => ('kind' in p) ? p : { ...p, kind: 'note' });
   // prune stale lastReminderFired keys older than today
   const t0 = todayKey();
   for (const k of Object.keys(S.lastReminderFired)) { if (k.split('@')[0] < t0) delete S.lastReminderFired[k]; }

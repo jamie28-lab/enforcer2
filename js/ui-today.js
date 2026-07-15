@@ -12,6 +12,7 @@ import { requestNotifPermission } from './reminders.js';
 import { dueCards, rate, computeNext, draftMistakeCard } from './srs.js';
 import { loadBank, selectDailyQuestions, markServed, draftQuizCard, logQuizAnswer } from './quiz.js';
 import { renderBodyCard, wireBody } from './ui-body.js';
+import { renderBreakGlassFireCard, renderBreakGlassInviteCard, armPowerDayInvite } from './ui-breakglass.js';
 
 function renderNotifBanner() {
   const nb = $('#notif-banner');
@@ -192,6 +193,8 @@ export function renderToday() {
   renderRecall();
   renderQuizCard();
   renderBodyCard();
+  renderBreakGlassFireCard();   // P4: carrot before the stick — most recent note, evening/weakness-day only
+  renderBreakGlassInviteCard();
 }
 
 /* ---------- Recall (P6 — FSRS spaced repetition) ---------- */
@@ -474,6 +477,7 @@ export function submitCheckin() {
     showShame({ lost: prevStreak, rule: S.mistakes[0].ruleName, date: t, ruleId: S.mistakes[0].ruleId });
   } else {
     settle();  // may trigger milestone
+    if (isPowerDay(t)) armPowerDayInvite();   // P4: Power Day evening write prompt (clean path only — never near shame)
     if (pending.celebration) { showCelebration(pending.celebration); pending.celebration = null; }
     else toast('Clean. ' + (currentStreak()) + ' and counting.');
   }
